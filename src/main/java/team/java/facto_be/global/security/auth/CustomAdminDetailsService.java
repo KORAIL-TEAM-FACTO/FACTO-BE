@@ -13,6 +13,6 @@ public class CustomAdminDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String adminId){
-        return new AuthDetails(adminId, Role.ADMIN.name(), AuthDetails.EMPTY_ATTRIBUTES);
+        return new AuthDetails(adminId, Role.ADMIN.name());
     }
 }
