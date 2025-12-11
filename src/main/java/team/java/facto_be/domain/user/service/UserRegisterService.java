@@ -32,6 +32,12 @@ public class UserRegisterService {
                 .email(request.email())
                 .password(encodedPassword)
                 .name(request.name())
+                .lifeCycleCode(request.lifeCycleCode())
+                .householdStatusCode(request.householdStatusCode())
+                .interestThemeCode(request.interestThemeCode())
+                .age(request.age())
+                .sidoName(request.sidoName())
+                .sigunguName(request.sigunguName())
                 .role(Role.USER)
                 .build();
 

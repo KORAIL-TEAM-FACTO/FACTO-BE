@@ -3,6 +3,7 @@ package team.java.facto_be.global.feign.client;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import team.java.facto_be.global.feign.dto.LocalWelfareDetailResponse;
 import team.java.facto_be.global.feign.dto.LocalWelfareResponse;
 
 /**
@@ -29,5 +30,11 @@ public interface LocalWelfareClient {
             @RequestParam(value = "srchKeyCode", required = false) String searchKeyCode,
             @RequestParam(value = "searchWrd", required = false) String searchWord,
             @RequestParam(value = "arrgOrd", required = false) String arrangeOrder
+    );
+
+    @GetMapping("/LcgvWelfaredetailed")
+    LocalWelfareDetailResponse getWelfareDetail(
+            @RequestParam("serviceKey") String serviceKey,
+            @RequestParam("servId") String serviceId
     );
 }

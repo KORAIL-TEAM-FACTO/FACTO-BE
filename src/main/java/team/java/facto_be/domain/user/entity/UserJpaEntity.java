@@ -42,7 +42,41 @@ public class UserJpaEntity extends BaseTimeEntity {
     @Column(name = "name", nullable = false)
     private String name;
 
+    @Column(name = "life_cycle_code", nullable = false, length = 3)
+    private String lifeCycleCode;
+
+    @Column(name = "household_status_code", nullable = false, length = 3)
+    private String householdStatusCode;
+
+    @Column(name = "interest_theme_code", nullable = false, length = 3)
+    private String interestThemeCode;
+
+    @Column(name = "age", nullable = false)
+    private Integer age;
+
+    @Column(name = "sido_name", nullable = false, length = 50)
+    private String sidoName;
+
+    @Column(name = "sigungu_name", nullable = false, length = 50)
+    private String sigunguName;
+
     @Column(name = "role", nullable = false)
     @Enumerated(EnumType.STRING)
     private Role role;
+
+    public void updateProfile(String name,
+                              String lifeCycleCode,
+                              String householdStatusCode,
+                              String interestThemeCode,
+                              Integer age,
+                              String sidoName,
+                              String sigunguName) {
+        this.name = name;
+        this.lifeCycleCode = lifeCycleCode;
+        this.householdStatusCode = householdStatusCode;
+        this.interestThemeCode = interestThemeCode;
+        this.age = age;
+        this.sidoName = sidoName;
+        this.sigunguName = sigunguName;
+    }
 }
