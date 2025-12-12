@@ -5,7 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import team.java.facto_be.domain.user.dto.request.UpdateProfileRequest;
 import team.java.facto_be.domain.user.entity.UserJpaEntity;
-import team.java.facto_be.domain.facade.UserFacade;
+import team.java.facto_be.domain.user.facade.UserFacade;
 
 @Service
 @RequiredArgsConstructor

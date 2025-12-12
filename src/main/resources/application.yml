@@ -48,5 +48,3 @@ local-welfare:
   base-url: ${LOCAL_WELFARE_BASE_URL:https://apis.data.go.kr/B554287/LocalGovernmentWelfareInformations}
   service-key: ${LOCAL_WELFARE_SERVICE_KEY}
 
-open-api:
-  key:${}
