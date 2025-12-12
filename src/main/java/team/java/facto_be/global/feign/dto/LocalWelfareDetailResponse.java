@@ -1,41 +1,51 @@
 package team.java.facto_be.global.feign.dto;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
-
-import java.util.List;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
+@JacksonXmlRootElement(localName = "response")
 public record LocalWelfareDetailResponse(
-        @JsonProperty("resultCode") String resultCode,
-        @JsonProperty("resultMessage") String resultMessage,
-        @JsonProperty("servId") String servId,
-        @JsonProperty("servNm") String servNm,
-        @JsonProperty("enfcBgngYmd") String enforcementStartDate,
-        @JsonProperty("enfcEndYmd") String enforcementEndDate,
-        @JsonProperty("bizChrDeptNm") String departmentName,
-        @JsonProperty("ctpvNm") String ctpvNm,
-        @JsonProperty("sggNm") String sggNm,
-        @JsonProperty("servDgst") String servDgst,
-        @JsonProperty("lifeNmArray") String lifeNmArray,
-        @JsonProperty("trgterIndvdlNmArray") String targetNameArray,
-        @JsonProperty("intrsThemaNmArray") String interestThemeArray,
-        @JsonProperty("sprtCycNm") String supportCycleName,
-        @JsonProperty("srvPvsnNm") String providerName,
-        @JsonProperty("aplyMtdNm") String applyMethodName,
-        @JsonProperty("sprtTrgtCn") String supportTargetContent,
-        @JsonProperty("slctCritCn") String selectionCriteriaContent,
-        @JsonProperty("alwServCn") String allowanceServiceContent,
-        @JsonProperty("aplyMtdCn") String applyMethodContent,
-        @JsonProperty("inqNum") String inquiryCount,
-        @JsonProperty("lastModYmd") String lastModifiedDate,
-        @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
-        @JsonProperty("inqplCtadrList") List<LocalWelfareRelatedInfo> contactList,
-        @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
-        @JsonProperty("inqplHmpgReldList") List<LocalWelfareRelatedInfo> homepageList,
-        @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
-        @JsonProperty("baslawList") List<LocalWelfareRelatedInfo> basicLawList,
-        @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
-        @JsonProperty("basfrmList") List<LocalWelfareRelatedInfo> basicFormList
-) { }
+        @JacksonXmlProperty(localName = "header") Header header,
+        @JacksonXmlProperty(localName = "body") Body body
+) {
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record Header(
+            @JacksonXmlProperty(localName = "resultCode") String resultCode,
+            @JacksonXmlProperty(localName = "resultMsg") String resultMsg
+    ) { }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record Body(
+            @JacksonXmlProperty(localName = "servId") String servId,
+            @JacksonXmlProperty(localName = "servNm") String servNm,
+            @JacksonXmlProperty(localName = "enfcBgngYmd") String enforcementStartDate,
+            @JacksonXmlProperty(localName = "enfcEndYmd") String enforcementEndDate,
+            @JacksonXmlProperty(localName = "bizChrDeptNm") String departmentName,
+            @JacksonXmlProperty(localName = "ctpvNm") String ctpvNm,
+            @JacksonXmlProperty(localName = "sggNm") String sggNm,
+            @JacksonXmlProperty(localName = "servDgst") String servDgst,
+            @JacksonXmlProperty(localName = "lifeNmArray") String lifeNmArray,
+            @JacksonXmlProperty(localName = "trgterIndvdlNmArray") String targetNameArray,
+            @JacksonXmlProperty(localName = "intrsThemaNmArray") String interestThemeArray,
+            @JacksonXmlProperty(localName = "sprtCycNm") String supportCycleName,
+            @JacksonXmlProperty(localName = "srvPvsnNm") String providerName,
+            @JacksonXmlProperty(localName = "aplyMtdNm") String applyMethodName,
+            @JacksonXmlProperty(localName = "sprtTrgtCn") String supportTargetContent,
+            @JacksonXmlProperty(localName = "slctCritCn") String selectionCriteriaContent,
+            @JacksonXmlProperty(localName = "alwServCn") String allowanceServiceContent,
+            @JacksonXmlProperty(localName = "aplyMtdCn") String applyMethodContent,
+            @JacksonXmlProperty(localName = "inqNum") String inquiryCount,
+            @JacksonXmlProperty(localName = "lastModYmd") String lastModifiedDate,
+            @JacksonXmlProperty(localName = "inqplCtadrList") ListWrapper<LocalWelfareRelatedInfo> contactList,
+            @JacksonXmlProperty(localName = "inqplHmpgReldList") ListWrapper<LocalWelfareRelatedInfo> homepageList,
+            @JacksonXmlProperty(localName = "baslawList") ListWrapper<LocalWelfareRelatedInfo> basicLawList,
+            @JacksonXmlProperty(localName = "basfrmList") ListWrapper<LocalWelfareRelatedInfo> basicFormList
+    ) { }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record ListWrapper<T>(
+            @JacksonXmlProperty(localName = "item") java.util.List<T> item
+    ) { }
+}

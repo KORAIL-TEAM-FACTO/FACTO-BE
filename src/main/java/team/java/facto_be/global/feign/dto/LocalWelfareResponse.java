@@ -1,16 +1,20 @@
 package team.java.facto_be.global.feign.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 
 import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
+@JacksonXmlRootElement(localName = "wantedList")
 public record LocalWelfareResponse(
-        @JsonProperty("resultCode") String resultCode,
-        @JsonProperty("resultMessage") String resultMessage,
-        @JsonProperty("numOfRows") String numOfRows,
-        @JsonProperty("pageNo") String pageNo,
-        @JsonProperty("totalCount") String totalCount,
-        @JsonProperty("servList") List<LocalWelfareItem> servList
+        @JacksonXmlProperty(localName = "totalCount") String totalCount,
+        @JacksonXmlProperty(localName = "pageNo") String pageNo,
+        @JacksonXmlProperty(localName = "numOfRows") String numOfRows,
+        @JacksonXmlProperty(localName = "resultCode") String resultCode,
+        @JacksonXmlProperty(localName = "resultMessage") String resultMessage,
+        @JacksonXmlElementWrapper(useWrapping = false)
+        @JacksonXmlProperty(localName = "servList") List<LocalWelfareItem> servList
 ) { }
