@@ -145,12 +145,16 @@ public class JwtTokenProvider {
     /**
      * 요청 헤더에서 Bearer 토큰 문자열을 추출한다.
      */
-    public String resolveToken(HttpServletRequest request){
+    public String resolveToken(HttpServletRequest request) {
+        System.out.println(jwtProperties.header());
         String bearerToken = request.getHeader(jwtProperties.header());
+        System.out.println("1: "+ bearerToken);
+        return parseToken(bearerToken);
+    }
 
-        if(StringUtils.hasText(bearerToken) && bearerToken.startsWith(jwtProperties.prefix())
-        && bearerToken.length() > jwtProperties.prefix().length() + 1){
-            return bearerToken.substring(jwtProperties.prefix().length() +1);
+    private String parseToken(String bearerToken) {
+        if (bearerToken != null && bearerToken.startsWith(jwtProperties.prefix())) {
+            return bearerToken.replace(jwtProperties.prefix(), "").trim();
         }
         return null;
     }
