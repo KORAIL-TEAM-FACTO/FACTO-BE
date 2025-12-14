@@ -1,4 +1,7 @@
 spring:
+  autoconfigure:
+    exclude: []
+
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: ${DB_URL}
@@ -36,6 +39,30 @@ spring:
   threads:
     virtual:
       enabled: true
+      
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+
+      embedding:
+        options:
+          model: text-embedding-ada-002
+
+      chat:
+        options:
+          model: gpt-3.5-turbo
+          temperature: 0.7
+          max-tokens: 3000
+
+    vectorstore:
+      chroma:
+        client:
+          host: http://localhost
+          port: 8000
+        tenant-name: default_tenant
+        database-name: default_database
+        collection-name: vector_store
+        initialize-schema: true
 
 welfare:
   api:

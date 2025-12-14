@@ -183,7 +183,7 @@ public class WelfareServiceJpaEntity extends BaseTimeEntity {
     /**
      * 담당자 연락처
      */
-    @Column(name = "contact", length = 200)
+    @Column(name = "contact", length = 2000)
     private String contact;
 
     /**
