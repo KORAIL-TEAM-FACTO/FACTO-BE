@@ -14,17 +14,17 @@
   "password": "P@ssw0rd!",
   "name": "홍길동",
   "life_cycle": "청년",
-  "household_status": "다자녀",
-  "interest_theme": "생활지원",
+  "household_status": ["다자녀", "저소득"],
+  "interest_theme": ["생활지원", "주거", "교육"],
   "age": 29,
   "sido_name": "서울특별시",
   "sigungu_name": "강남구"
 }
 ```
 - 허용 값
-  - `life_cycle`: 영유아, 아동, 청소년, 청년, 중장년, 노년, 임신·출산
-  - `household_status`: 다문화·탈북민, 다자녀, 보훈대상자, 장애인, 저소득, 한부모·조손
-  - `interest_theme`: 신체건강, 정신건강, 생활지원, 주거, 일자리, 문화·여가, 안전·위기, 임신·출산, 보육, 교육, 입양·위탁, 보호·돌봄, 서민금융, 법률
+  - `life_cycle`: 영유아, 아동, 청소년, 청년, 중장년, 노년, 임신·출산 (단일 값)
+  - `household_status`: 다문화·탈북민, 다자녀, 보훈대상자, 장애인, 저소득, 한부모·조손 (배열, 중복 가능)
+  - `interest_theme`: 신체건강, 정신건강, 생활지원, 주거, 일자리, 문화·여가, 안전·위기, 임신·출산, 보육, 교육, 입양·위탁, 보호·돌봄, 서민금융, 법률 (배열, 중복 가능)
 - 응답: `201 Created`, 바디 없음
 
 ## 로그인 - **POST** `/users/login`
@@ -53,8 +53,8 @@
   "email": "user@example.com",
   "name": "홍길동",
   "life_cycle": "청년",
-  "household_status": "다자녀",
-  "interest_theme": "생활지원",
+  "household_status": ["다자녀", "저소득"],
+  "interest_theme": ["생활지원", "주거", "교육"],
   "age": 29,
   "sido_name": "서울특별시",
   "sigungu_name": "강남구",
@@ -70,8 +70,8 @@
 {
   "name": "김철수",
   "life_cycle": "중장년",
-  "household_status": "보훈대상자",
-  "interest_theme": "주거",
+  "household_status": ["보훈대상자", "장애인"],
+  "interest_theme": ["주거", "문화·여가"],
   "age": 35,
   "sido_name": "경기도",
   "sigungu_name": "수원시"

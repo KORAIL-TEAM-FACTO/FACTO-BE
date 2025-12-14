@@ -1,5 +1,7 @@
 package team.java.facto_be.domain.user.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -18,6 +20,7 @@ public class UserRegisterService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ObjectMapper objectMapper;
 
     @Transactional
     public void register(RegisterRequest request){
@@ -28,19 +31,26 @@ public class UserRegisterService {
 
         String encodedPassword = passwordEncoder.encode(request.password());
 
-        UserJpaEntity user = UserJpaEntity.builder()
-                .email(request.email())
-                .password(encodedPassword)
-                .name(request.name())
-                .lifeCycle(request.lifeCycle())
-                .householdStatus(request.householdStatus())
-                .interestTheme(request.interestTheme())
-                .age(request.age())
-                .sidoName(request.sidoName())
-                .sigunguName(request.sigunguName())
-                .role(Role.USER)
-                .build();
+        try {
+            String householdStatusJson = objectMapper.writeValueAsString(request.householdStatus());
+            String interestThemeJson = objectMapper.writeValueAsString(request.interestTheme());
 
-        userRepository.save(user);
+            UserJpaEntity user = UserJpaEntity.builder()
+                    .email(request.email())
+                    .password(encodedPassword)
+                    .name(request.name())
+                    .lifeCycle(request.lifeCycle())
+                    .householdStatus(householdStatusJson)
+                    .interestTheme(interestThemeJson)
+                    .age(request.age())
+                    .sidoName(request.sidoName())
+                    .sigunguName(request.sigunguName())
+                    .role(Role.USER)
+                    .build();
+
+            userRepository.save(user);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("JSON 변환 오류", e);
+        }
     }
 }
