@@ -13,8 +13,10 @@ import org.springframework.web.bind.annotation.RestController;
 import team.java.facto_be.domain.chatbot.domain.entity.ChatMessage;
 import team.java.facto_be.domain.chatbot.domain.entity.ChatSession;
 import team.java.facto_be.domain.chatbot.service.ChatService;
+import team.java.facto_be.domain.chatbot.service.dto.ChatMessageResponse;
 import team.java.facto_be.domain.chatbot.service.dto.ChatRequest;
 import team.java.facto_be.domain.chatbot.service.dto.ChatResponse;
+import team.java.facto_be.domain.chatbot.service.dto.ChatSessionSummaryResponse;
 import team.java.facto_be.domain.user.facade.UserFacade;
 
 import java.util.List;
@@ -55,8 +57,7 @@ public class ChatController {
      * Fetch chat history by sessionId.
      */
     @GetMapping("/history/{sessionId}")
-    public ResponseEntity<List<ChatMessage>> getChatHistory(@PathVariable String sessionId) {
-        log.info("GET /api/chat/history/{}", sessionId);
+    public ResponseEntity<List<ChatMessageResponse>> getChatHistory(@PathVariable String sessionId) {
         return ResponseEntity.ok(chatService.getChatHistory(sessionId));
     }
 
@@ -64,10 +65,9 @@ public class ChatController {
      * List sessions for current user.
      */
     @GetMapping("/sessions")
-    public ResponseEntity<List<ChatSession>> getUserSessions() {
+    public ResponseEntity<List<ChatSessionSummaryResponse>> getUserSessions() {
         Long currentUserId = resolveCurrentUserId();
-        log.info("GET /api/chat/sessions - userId: {}", currentUserId);
-        return ResponseEntity.ok(chatService.getUserSessions(currentUserId));
+        return ResponseEntity.ok(chatService.getUserSessionSummaries(currentUserId));
     }
 
     /**

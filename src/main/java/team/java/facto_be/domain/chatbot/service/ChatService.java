@@ -12,8 +12,11 @@ import team.java.facto_be.domain.chatbot.domain.entity.ChatMessage;
 import team.java.facto_be.domain.chatbot.domain.entity.ChatSession;
 import team.java.facto_be.domain.chatbot.domain.repository.ChatMessageRepository;
 import team.java.facto_be.domain.chatbot.domain.repository.ChatSessionRepository;
+import team.java.facto_be.domain.chatbot.service.dto.ChatMessageResponse;
+import team.java.facto_be.domain.chatbot.service.dto.ChatSessionSummaryResponse;
 import team.java.facto_be.domain.chatbot.service.dto.WebSocketMessage;
 import team.java.facto_be.domain.chatbot.service.enums.QueryType;
+import team.java.facto_be.domain.user.facade.UserFacade;
 import team.java.facto_be.domain.welfare.entity.WelfareServiceJpaEntity;
 import team.java.facto_be.domain.welfare.repository.WelfareServiceRepository;
 
@@ -40,6 +43,7 @@ public class ChatService {
 
     private final QueryTypeClassifier queryTypeClassifier;
     private final SystemPromptProvider systemPromptProvider;
+    private final UserFacade userFacade;
 
     public record ChatResult(String sessionId, String message, QueryType queryType) {}
 
@@ -180,11 +184,16 @@ public class ChatService {
      * =========================
      */
     @Transactional(readOnly = true)
-    public List<ChatMessage> getChatHistory(String sessionId) {
+    public List<ChatMessageResponse> getChatHistory(String sessionId) {
 
-        return chatSessionRepository.findBySessionId(sessionId)
-                .map(chatMessageRepository::findByChatSessionOrderByCreatedAtAsc)
-                .orElse(List.of());
+        ChatSession session = chatSessionRepository
+                .findBySessionIdAndUserId(sessionId, userFacade.currentUser().getId())
+                .orElseThrow(() -> new IllegalStateException("세션 접근 권한이 없습니다."));
+
+        return chatMessageRepository.findByChatSessionOrderByCreatedAtAsc(session)
+                .stream()
+                .map(ChatMessageResponse::from)
+                .toList();
     }
 
     /**
@@ -193,11 +202,10 @@ public class ChatService {
      * =========================
      */
     @Transactional(readOnly = true)
-    public List<ChatSession> getUserSessions(Long userId) {
-        if (userId == null) {
-            return List.of();
-        }
-        return chatSessionRepository.findActiveSessionsByUserId(userId);
+    public List<ChatSessionSummaryResponse> getUserSessionSummaries(Long userId) {
+        return chatSessionRepository.findActiveSessionsByUserId(userId).stream()
+                .map(ChatSessionSummaryResponse::from)
+                .toList();
     }
 
     /**
@@ -208,12 +216,13 @@ public class ChatService {
     @Transactional
     public void deleteSession(String sessionId) {
 
-        chatSessionRepository.findBySessionId(sessionId)
-                .ifPresent(session -> {
-                    chatMemory.clear(sessionId);
-                    chatMessageRepository.deleteByChatSession(session);
-                    chatSessionRepository.delete(session);
-                });
+        ChatSession session = chatSessionRepository
+                .findBySessionIdAndUserId(sessionId, userFacade.currentUser().getId())
+                .orElseThrow(() -> new IllegalStateException("세션 접근 권한이 없습니다."));
+
+        chatMemory.clear(sessionId);
+        chatMessageRepository.deleteByChatSession(session);
+        chatSessionRepository.delete(session);
     }
 
     /**

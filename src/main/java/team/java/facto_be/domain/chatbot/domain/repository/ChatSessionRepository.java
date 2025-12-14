@@ -12,8 +12,16 @@ public interface ChatSessionRepository extends JpaRepository<ChatSession, Long> 
 
     Optional<ChatSession> findBySessionId(String sessionId);
 
-    @Query("SELECT cs FROM ChatSession cs WHERE cs.userId = :userId AND cs.isActive = true ORDER BY cs.createdAt DESC")
+    Optional<ChatSession> findBySessionIdAndUserId(String sessionId, Long userId);
+
+    @Query("""
+        SELECT cs
+        FROM ChatSession cs
+        WHERE cs.userId = :userId
+          AND cs.isActive = true
+        ORDER BY cs.createdAt DESC
+    """)
     List<ChatSession> findActiveSessionsByUserId(@Param("userId") Long userId);
 
-    boolean existsBySessionId(String sessionId);
+    boolean existsBySessionIdAndUserId(String sessionId, Long userId);
 }

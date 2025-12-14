@@ -5,6 +5,86 @@
 - 요청/응답: `application/json`
 - 인증: JWT `Authorization: Bearer {accessToken}` 헤더 사용(회원가입/로그인 제외)
 
+## 챗봇 API
+- Base path: `/api/chat`
+- 인증: 로그인 시 `Authorization: Bearer {accessToken}` 로 사용자 컨텍스트를 연결. 비로그인도 대화 가능하지만 세션 목록 조회는 빈 배열.
+- 모델/컨텍스트: GPT-3.5 기반 `ChatClient` + Chroma VectorStore(RAG, topK=5, similarity ≥ 0.7), 메시지 윈도 메모리 10개, Tool Calling(welfareSearchTool, personalizedWelfareRecommendationTool).
+- QueryType 분류: DISCOVERY(데이터 파악), TOPIC(주제 기반 탐색), SERVICE_FOCUS(특정 서비스 상세 질의), GENERAL(일반 대화). `queryType` 필드로 응답.
+- 첫 시작은 null / session을 이어가고 싶으면 응답 받은 세션 ID를 요청 본문에 넣으면 됨.
+
+### 대화 생성(비스트리밍) - **POST** `/api/chat`
+- 설명: 단건 요청/단건 응답. 세션 ID가 없으면 서버가 UUID로 생성 후 ChatMemory/DB에 저장.
+- 요청 본문 예시:
+```json
+{
+  "sessionId": null,
+  "message": "수원 청년 창업 지원금 알려줘"
+}
+```
+- 응답 본문 예시:
+```json
+{
+  "sessionId": "4c95a0a6-24f7-4cc8-9b6d-0d1b2af0c9ee",
+  "message": "경기도 수원시 청년 창업을 지원하는 주요 사업은...",
+  "queryType": "TOPIC"
+}
+```
+- 동작: 사용자 메시지를 `chat_messages`에 저장 → QueryType 분류 → QueryType별 시스템 프롬프트 + 벡터스토어/메모리/Tool(필요 시)로 호출 → 응답 저장 및 세션 제목 자동 생성(처음 응답 10~30자).
+
+### 대화 기록 조회 - **GET** `/api/chat/history/{sessionId}`
+- 설명: 세션의 모든 메시지를 생성 시각 오름차순으로 반환.
+- 응답 본문 예시:
+```json
+[
+  {
+    "id": 10,
+    "session_id": "4c95a0a6-24f7-4cc8-9b6d-0d1b2af0c9ee",
+    "role": "USER",
+    "message_type": "TEXT",
+    "sender": "5",
+    "content": "수원 청년 창업 지원금 알려줘",
+    "created_at": "2024-12-15T02:00:00"
+  },
+  {
+    "id": 11,
+    "session_id": "4c95a0a6-24f7-4cc8-9b6d-0d1b2af0c9ee",
+    "role": "ASSISTANT",
+    "message_type": "TEXT",
+    "sender": "ASSISTANT",
+    "content": "경기도 수원시에서 받을 수 있는 주요 창업 지원금은...",
+    "created_at": "2024-12-15T02:00:02"
+  }
+]
+```
+
+### 내 세션 목록 - **GET** `/api/chat/sessions`
+- 설명: 현재 로그인 사용자의 활성 세션 목록을 최신 생성 순으로 반환. 미인증 시 `[]`.
+- 응답 필드: `sessionId`, `title`, `userId`, `isActive`, `lastActivity`, `createdAt`, `updatedAt`.
+
+### 세션 삭제 - **DELETE** `/api/chat/sessions/{sessionId}`
+- 설명: 세션/메시지/메모리 모두 삭제. 성공 시 `204 No Content`.
+
+### 벡터스토어 초기화(관리자) - **POST** `/api/chat/admin/init-vector-store`
+- 설명: `welfare_services` 테이블 데이터를 문서화하여 Chroma VectorStore에 재적재. 응답: `"VectorStore initialized"`.
+- 비고: 운영 시 관리자 보호 필요.
+
+### WebSocket 스트리밍 - `/ws/chat`
+- 프로토콜: 텍스트 WebSocket. 핸들러 `ChatWebSocketHandler`.
+- 요청 메시지(JSON):
+```json
+{
+  "sessionId": "4c95a0a6-24f7-4cc8-9b6d-0d1b2af0c9ee",
+  "message": "전북에서 받을 수 있는 월세 지원 알려줘",
+  "userId": 5
+}
+```
+- 서버 응답 흐름:
+  - `START`: `{ "sessionId": "...", "type": "START" }`
+  - `STREAMING`: 다수 전송. `{ "sessionId": "...", "content": "조각 텍스트", "type": "STREAMING" }`
+  - `END`: `{ "sessionId": "...", "type": "END" }`
+  - 오류 시 `ERROR`: `{ "sessionId": "...", "content": "메시지 처리 중 오류가 발생했습니다.", "type": "ERROR" }`
+- 비고: REST와 동일하게 세션 생성/메모리 관리 후 QueryType 분류 및 Tool/RAG를 적용하며, 스트림 응답이 완료되면 전체 메시지를 저장.
+
 ## 회원가입 - **POST** `/users/register`
 - 설명: 신규 사용자 등록, 추가 프로필 정보 포함
 - 요청 본문 예시:
