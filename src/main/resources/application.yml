@@ -37,5 +37,9 @@ spring:
     virtual:
       enabled: true
 
+welfare:
+  api:
+    service-key: ${WELFARE_SERVICE_KEY}
+
 #server:
   #port: 8083
