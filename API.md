@@ -85,6 +85,92 @@
 ```
 - 응답: `204 No Content`, 바디 없음
 
+## 즐겨찾기 추가 - **POST** `/bookmarks/{welfareServiceId}`
+- 설명: 복지 서비스를 즐겨찾기에 추가
+- 헤더: `Authorization: Bearer {accessToken}`
+- Path 파라미터: `welfareServiceId` - 복지 서비스 ID
+- 응답: `201 Created`, 바디 없음
+
+## 즐겨찾기 삭제 - **DELETE** `/bookmarks/{welfareServiceId}`
+- 설명: 복지 서비스를 즐겨찾기에서 제거
+- 헤더: `Authorization: Bearer {accessToken}`
+- Path 파라미터: `welfareServiceId` - 복지 서비스 ID
+- 응답: `204 No Content`, 바디 없음
+
+## 내 즐겨찾기 목록 조회 - **GET** `/bookmarks`
+- 설명: 현재 사용자의 즐겨찾기 목록 조회 (최신순)
+- 헤더: `Authorization: Bearer {accessToken}`
+- 응답 예시:
+```json
+[
+  {
+    "id": 1,
+    "welfare_service_id": "WF12345",
+    "created_at": "2024-12-14T10:30:00"
+  },
+  {
+    "id": 2,
+    "welfare_service_id": "WF67890",
+    "created_at": "2024-12-13T15:20:00"
+  }
+]
+```
+
+## 즐겨찾기 여부 확인 - **GET** `/bookmarks/{welfareServiceId}/check`
+- 설명: 특정 복지 서비스가 즐겨찾기에 추가되어 있는지 확인
+- 헤더: `Authorization: Bearer {accessToken}`
+- Path 파라미터: `welfareServiceId` - 복지 서비스 ID
+- 응답: `true` 또는 `false`
+
+## 최근 본 복지 서비스 추가 - **POST** `/recent-views/{welfareServiceId}`
+- 설명: 복지 서비스를 최근 본 목록에 추가 (최대 100개, 중복 시 조회 시간 갱신)
+- 헤더: `Authorization: Bearer {accessToken}`
+- Path 파라미터: `welfareServiceId` - 복지 서비스 ID
+- 응답: `201 Created`, 바디 없음
+
+## 최근 본 복지 서비스 목록 조회 - **GET** `/recent-views`
+- 설명: 현재 사용자의 최근 본 복지 서비스 목록 조회 (최신순)
+- 헤더: `Authorization: Bearer {accessToken}`
+- Query 파라미터: `limit` (선택, 기본값: 100, 최대: 100) - 조회 개수
+- 응답 예시:
+```json
+[
+  {
+    "id": 1,
+    "welfare_service_id": "WF12345",
+    "viewed_at": "2024-12-14T10:30:00"
+  },
+  {
+    "id": 2,
+    "welfare_service_id": "WF67890",
+    "viewed_at": "2024-12-14T09:15:00"
+  }
+]
+```
+
+## 인기 복지 서비스 TOP 10 조회 - **GET** `/recent-views/trending`
+- 설명: 전체 사용자가 최근에 가장 많이 조회한 복지 서비스 TOP 10 (인증 불필요)
+- Query 파라미터:
+  - `days` (선택, 기본값: 7) - 최근 N일 기준
+  - `limit` (선택, 기본값: 10, 최대: 100) - 조회 개수
+- 응답 예시:
+```json
+[
+  {
+    "welfare_service_id": "WF12345",
+    "view_count": 1523
+  },
+  {
+    "welfare_service_id": "WF67890",
+    "view_count": 1245
+  },
+  {
+    "welfare_service_id": "WF11111",
+    "view_count": 987
+  }
+]
+```
+
 ## 토큰 포맷
 - Access Token: JWT, 인증이 필요한 요청에 `Authorization: Bearer {accessToken}` 헤더 사용
 - Refresh Token: 토큰 재발급 시 사용
