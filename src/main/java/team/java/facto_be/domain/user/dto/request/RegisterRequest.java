@@ -32,11 +32,12 @@ public record RegisterRequest(
         @Pattern(regexp = "영유아|아동|청소년|청년|중장년|노년|임신·출산")
         String lifeCycle,
 
-        @NotEmpty
-        List<@NotBlank @Pattern(regexp = "다문화·탈북민|다자녀|보훈대상자|장애인|저소득|한부모·조손") String> householdStatus,
+        List<@NotBlank @Pattern(regexp = "다문화·탈북민|다자녀|보훈대상자|장애인|저소득|한부모·조손") String>
+        householdStatus,
 
-        @NotEmpty
-        List<@NotBlank @Pattern(regexp = "신체건강|정신건강|생활지원|주거|일자리|문화·여가|안전·위기|임신·출산|보육|교육|입양·위탁|보호·돌봄|서민금융|법률") String> interestTheme,
+
+        List<@NotBlank @Pattern(regexp = "신체건강|정신건강|생활지원|주거|일자리|문화·여가|안전·위기|임신·출산|보육|교육|입양·위탁|보호·돌봄|서민금융|법률") String>
+        interestTheme,
 
         @NotNull
         @Min(0)

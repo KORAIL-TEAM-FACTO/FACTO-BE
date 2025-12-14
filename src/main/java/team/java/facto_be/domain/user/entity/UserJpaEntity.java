@@ -45,10 +45,10 @@ public class UserJpaEntity extends BaseTimeEntity {
     @Column(name = "life_cycle", nullable = false, length = 20)
     private String lifeCycle;
 
-    @Column(name = "household_status", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "household_status", columnDefinition = "TEXT")
     private String householdStatus;
 
-    @Column(name = "interest_theme", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "interest_theme", columnDefinition = "TEXT")
     private String interestTheme;
 
     @Column(name = "age", nullable = false)
