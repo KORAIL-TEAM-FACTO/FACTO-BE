@@ -165,6 +165,40 @@
 ]
 ```
 
+## 맞춤형 복지 서비스 목록 조회 - **GET** `/welfare-services`
+- 설명: 현재 로그인한 사용자의 프로필 정보를 기반으로 맞춤형 복지 서비스 목록 조회
+- 헤더: `Authorization: Bearer {accessToken}` (인증 필요)
+- Query 파라미터:
+  - `limit` (선택, 기본값: 50, 최대: 100) - 조회 개수
+- 동작:
+  - 사용자의 생애주기, 가구상태(배열), 관심테마(배열), 지역 정보를 기반으로 검색
+  - 조회수 많은 순으로 정렬
+- 응답 예시:
+```json
+[
+  {
+    "service_id": "WF12345",
+    "service_name": "청년 주거 지원 사업",
+    "ai_summary": "만 19-34세 청년에게 월세 보증금 지원",
+    "ctpv_nm": "서울특별시",
+    "sgg_nm": "강남구",
+    "support_type": "현금",
+    "service_type": "LOCAL",
+    "inquiry_count": 1523
+  },
+  {
+    "service_id": "WF67890",
+    "service_name": "다자녀 가구 교육비 지원",
+    "ai_summary": "3자녀 이상 가구 교육비 지원",
+    "ctpv_nm": "서울특별시",
+    "sgg_nm": "강남구",
+    "support_type": "현금",
+    "service_type": "LOCAL",
+    "inquiry_count": 1245
+  }
+]
+```
+
 ## 복지 서비스 상세 조회 - **GET** `/welfare-services/{serviceId}`
 - 설명: 복지 서비스 상세 정보 조회 (조회수 자동 증가, 인증 불필요)
 - Path 파라미터: `serviceId` - 복지 서비스 ID
@@ -207,6 +241,50 @@
 }
 ```
 - 참고: 이 API 호출 후 사용자가 로그인한 상태라면 `POST /recent-views/{serviceId}`도 함께 호출 필요
+
+## 지자체 복지 서비스 상세 조회 (외부 API) - **GET** `/api/welfare/detail`
+- 설명: 공공데이터포털의 지자체 복지 서비스 API를 통해 상세 정보 조회 (인증 불필요)
+- Query 파라미터: `servId` - 서비스 ID
+- 요청 예시: `GET /api/welfare/detail?servId=WF12345`
+- 응답 예시:
+```json
+{
+  "result_code": "00",
+  "result_message": "정상",
+  "serv_id": "WF12345",
+  "serv_nm": "청년 주거 지원 사업",
+  "enfc_bgng_ymd": "20240101",
+  "enfc_end_ymd": "20241231",
+  "biz_chr_dept_nm": "주거복지과",
+  "ctpv_nm": "서울특별시",
+  "sgg_nm": "강남구",
+  "serv_dgst": "청년층의 주거 안정을 위한 지원",
+  "life_nm_array": "청년",
+  "trgter_indvdl_nm_array": "저소득",
+  "intrs_thema_nm_array": "주거",
+  "sprt_cyc_nm": "월별",
+  "srv_pvsn_nm": "현금",
+  "aply_mtd_nm": "온라인",
+  "sprt_trgt_cn": "만 19-34세 청년 중 소득 기준 충족자",
+  "slct_crit_cn": "중위소득 150% 이하",
+  "alw_serv_cn": "월세 최대 20만원, 보증금 최대 1000만원 지원",
+  "aply_mtd_cn": "복지로 홈페이지에서 온라인 신청",
+  "inq_num": "02-1234-5678",
+  "last_mod_ymd": "20241201",
+  "inqpl_ctadr_list": {
+    "wlfare_info_reld_nm": "문의처",
+    "wlfare_info_reld_cn": "02-1234-5678",
+    "wlfare_info_dtl_cd": "001"
+  },
+  "inqpl_hmpg_reld_list": [
+    {
+      "wlfare_info_reld_nm": "홈페이지",
+      "wlfare_info_reld_cn": "https://example.com",
+      "wlfare_info_dtl_cd": "002"
+    }
+  ]
+}
+```
 
 ## 토큰 포맷
 - Access Token: JWT, 인증이 필요한 요청에 `Authorization: Bearer {accessToken}` 헤더 사용

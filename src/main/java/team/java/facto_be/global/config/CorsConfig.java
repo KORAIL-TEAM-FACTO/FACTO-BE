@@ -24,9 +24,8 @@ public class CorsConfig {
         // 인증 정보 허용 (쿠키, Authorization 헤더 등)
         config.setAllowCredentials(true);
 
-        // 모든 Origin 허용 (개발 환경)
-        // 프로덕션에서는 특정 도메인만 허용하도록 변경 필요
-        config.addAllowedOriginPattern("*");
+        // 허용할 Origin 설정
+        config.addAllowedOrigin("http://localhost:5173");
 
         // 모든 헤더 허용
         config.addAllowedHeader("*");

@@ -39,7 +39,7 @@ spring:
   threads:
     virtual:
       enabled: true
-
+      
   ai:
     openai:
       api-key: ${OPENAI_API_KEY}
@@ -64,6 +64,9 @@ spring:
         collection-name: vector_store
         initialize-schema: true
 
+welfare:
+  api:
+    service-key: ${WELFARE_SERVICE_KEY}
 
-  #server:
+#server:
   #port: 8083
