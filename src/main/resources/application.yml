@@ -32,7 +32,6 @@ spring:
     prefix: ${JWT_PREFIX:Bearer}
     secret: ${JWT_SECRET:JWT_SECRET=myVeryLongSecretKeyForJwtTokenGeneration123456789}
     accessExpiration: 360000000000
-    refreshExpiration: 604800
 
   threads:
     virtual:

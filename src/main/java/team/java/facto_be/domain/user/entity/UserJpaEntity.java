@@ -14,7 +14,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 import team.java.facto_be.global.entity.BaseTimeEntity;
-import team.java.facto_be.global.security.jwt.domain.entity.types.Role;
+import team.java.facto_be.global.security.jwt.types.Role;
 
 /**
  * 사용자 JPA 엔티티.

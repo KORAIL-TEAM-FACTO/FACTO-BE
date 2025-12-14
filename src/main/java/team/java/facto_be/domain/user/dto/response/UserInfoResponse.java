@@ -1,7 +1,7 @@
 package team.java.facto_be.domain.user.dto.response;
 
 import team.java.facto_be.domain.user.entity.UserJpaEntity;
-import team.java.facto_be.global.security.jwt.domain.entity.types.Role;
+import team.java.facto_be.global.security.jwt.types.Role;
 
 public record UserInfoResponse(
         Long id,

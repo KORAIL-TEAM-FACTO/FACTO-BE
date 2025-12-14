@@ -11,6 +11,5 @@ public record JwtProperties(
     String header,
     String prefix,
     String secret,
-    Long accessExpiration,
-    Long refreshExpiration
+    Long accessExpiration
     ){}

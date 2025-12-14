@@ -12,20 +12,17 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 import team.java.facto_be.domain.user.dto.response.TokenResponse;
 import team.java.facto_be.global.security.auth.CustomAdminDetailsService;
 import team.java.facto_be.global.security.auth.CustomUserDetailsService;
-import team.java.facto_be.global.security.jwt.domain.entity.RefreshToken;
-import team.java.facto_be.global.security.jwt.domain.entity.types.Role;
-import team.java.facto_be.global.security.jwt.domain.repository.RefreshTokenRepository;
+import team.java.facto_be.global.security.jwt.types.Role;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 /**
- * JWT 생성, 검증, 재발급과 관련된 핵심 유틸리티 컴포넌트.
+ * JWT 생성 및 검증과 관련된 핵심 유틸리티 컴포넌트.
  */
 @Component
 @RequiredArgsConstructor
@@ -33,25 +30,18 @@ public class JwtTokenProvider {
 
     private final JwtProperties jwtProperties;
 
-    private final RefreshTokenRepository refreshTokenRepository;
-
     private final CustomUserDetailsService customUserDetailsService;
 
     private final CustomAdminDetailsService customAdminDetailsService;
 
     public static final String ACCESS_TOKEN = "access_token";
-    public static final String REFRESH_TOKEN = "refresh_token";
 
     /**
-     * 사용자 식별자/역할을 기반으로 Access·Refresh 토큰을 생성·저장한다.
+     * 사용자 식별자/역할을 기반으로 Access 토큰을 생성한다.
      */
     public TokenResponse generateToken(String id, String role){
         String accessToken = generateAccessToken(id, role, ACCESS_TOKEN, jwtProperties.accessExpiration());
-        String refreshToken = generateRefreshToken(role, REFRESH_TOKEN, jwtProperties.refreshExpiration());
-        refreshTokenRepository.save(
-                new RefreshToken(id, refreshToken, jwtProperties.refreshExpiration())
-        );
-                return new TokenResponse(accessToken, refreshToken);
+        return new TokenResponse(accessToken);
     }
 
     /**
@@ -74,59 +64,6 @@ public class JwtTokenProvider {
                 .setExpiration(new Date(now.getTime()+ exp * 1000))
                 .signWith(getSecretKey(), SignatureAlgorithm.HS256)
                 .compact();
-    }
-
-    private String generateRefreshToken(String role, String type, Long exp){
-
-        Date now = new Date();
-
-        return Jwts.builder()
-                .claim("type", type)
-                .claim("role", role)
-                .setIssuedAt(now)
-                .setExpiration(new Date(now.getTime()+ exp * 1000))
-                .signWith(getSecretKey(), SignatureAlgorithm.HS256)
-                .compact();
-    }
-
-    /**
-     * Refresh 토큰을 검증한 뒤 새 토큰 쌍을 발급하고 저장소를 갱신한다.
-     */
-    public TokenResponse reissue(String refreshToken){
-        if(!isRefreshToken(refreshToken)){
-            throw new IllegalArgumentException("유효하지 않은 리프레시 토큰입니다.");
-        }
-        RefreshToken token = refreshTokenRepository.findByToken(refreshToken)
-                .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 리프레시 토큰입니다."));
-
-        String id = token.getId();
-        String role = getRole(token.getToken());
-
-        TokenResponse tokenResponse = generateToken(id, role);
-
-        token.update(tokenResponse.refreshToken(), jwtProperties.refreshExpiration());
-        refreshTokenRepository.save(token);
-
-        return new TokenResponse(tokenResponse.accessToken(), tokenResponse.refreshToken());
-
-    }
-
-    private String getRole(String token){
-        return getJws(token).getBody().get("role").toString();
-    }
-
-    private Boolean isRefreshToken(String token) {
-        if (token == null || token.isEmpty()) {
-            return false;
-        }
-
-        try {
-            Claims claims = getJws(token).getBody();
-            String type = claims.get("type", String.class);
-            return REFRESH_TOKEN.equals(type);
-        } catch (Exception e) {
-            return false;
-        }
     }
 
     private Jws<Claims> getJws(String token) {

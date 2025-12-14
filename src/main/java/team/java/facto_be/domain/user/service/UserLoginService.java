@@ -5,7 +5,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import team.java.facto_be.global.security.jwt.JwtTokenProvider;
-import team.java.facto_be.global.security.jwt.domain.entity.types.Role;
+import team.java.facto_be.global.security.jwt.types.Role;
 import team.java.facto_be.domain.user.dto.request.UserLoginRequest;
 import team.java.facto_be.domain.user.dto.response.TokenResponse;
 import team.java.facto_be.domain.user.entity.UserJpaEntity;
