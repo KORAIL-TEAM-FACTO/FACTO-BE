@@ -49,6 +49,42 @@
 }
 ```
 
+## 내 정보 조회 - **GET** `/users/me`
+- 설명: 현재 인증된 사용자의 정보 조회
+- 헤더: `Authorization: Bearer {accessToken}`
+- 응답 예시:
+```json
+{
+  "id": 1,
+  "email": "user@example.com",
+  "name": "홍길동",
+  "life_cycle_code": "004",
+  "household_status_code": "020",
+  "interest_theme_code": "030",
+  "age": 29,
+  "sido_name": "서울특별시",
+  "sigungu_name": "강남구",
+  "role": "USER"
+}
+```
+
+## 프로필 수정 - **PATCH** `/users/me`
+- 설명: 현재 인증된 사용자의 프로필 정보 수정
+- 헤더: `Authorization: Bearer {accessToken}`
+- 요청 본문 예시:
+```json
+{
+  "name": "김철수",
+  "life_cycle_code": "005",
+  "household_status_code": "030",
+  "interest_theme_code": "040",
+  "age": 35,
+  "sido_name": "경기도",
+  "sigungu_name": "수원시"
+}
+```
+- 응답: `204 No Content`, 바디 없음
+
 ## 토큰 포맷
 - Access Token: JWT, 인증이 필요한 요청에 `Authorization: Bearer {accessToken}` 헤더 사용
 - Refresh Token: 토큰 재발급 시 사용

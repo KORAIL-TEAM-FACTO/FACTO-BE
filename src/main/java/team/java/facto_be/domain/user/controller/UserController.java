@@ -3,6 +3,7 @@ package team.java.facto_be.domain.user.controller;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -13,6 +14,7 @@ import team.java.facto_be.domain.user.dto.request.RegisterRequest;
 import team.java.facto_be.domain.user.dto.request.UpdateProfileRequest;
 import team.java.facto_be.domain.user.dto.request.UserLoginRequest;
 import team.java.facto_be.domain.user.dto.response.TokenResponse;
+import team.java.facto_be.domain.user.dto.response.UserInfoResponse;
 import team.java.facto_be.domain.user.service.UserLoginService;
 import team.java.facto_be.domain.user.service.UserProfileService;
 import team.java.facto_be.domain.user.service.UserRegisterService;
@@ -38,6 +40,11 @@ public class UserController {
     @ResponseStatus(HttpStatus.CREATED)
     public void register(@Valid @RequestBody RegisterRequest request) {
         userRegisterService.register(request);
+    }
+
+    @GetMapping("/me")
+    public UserInfoResponse getMyInfo() {
+        return userProfileService.getMyInfo();
     }
 
     @PatchMapping("/me")
