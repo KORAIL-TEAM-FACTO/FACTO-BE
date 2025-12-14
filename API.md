@@ -13,23 +13,18 @@
   "email": "user@example.com",
   "password": "P@ssw0rd!",
   "name": "홍길동",
-  "lifeCycleCode": "004",
-  "householdStatusCode": "020",
-  "interestThemeCode": "030",
+  "lifeCycle": "청년",
+  "householdStatus": "다자녀",
+  "interestTheme": "생활지원",
   "age": 29,
   "sidoName": "서울특별시",
   "sigunguName": "강남구"
 }
 ```
-- 코드 값
-  - `lifeCycleCode`: 001(영유아), 002(아동), 003(청소년), 004(청년),
-    005(중장년), 006(노년), 007(임신·출산)
-  - `householdStatusCode`: 010(다문화·탈북민), 020(다자녀), 030(보훈대상자),
-    040(장애인), 050(저소득), 060(한부모·조손)
-  - `interestThemeCode`: 010(신체건강), 020(정신건강), 030(생활지원), 040(주거),
-    050(일자리), 060(문화·여가), 070(안전·위기), 080(임신·출산),
-    090(보육), 100(교육), 110(입양·위탁), 120(보호·돌봄), 130(서민금융),
-    140(법률)
+- 허용 값
+  - `lifeCycle`: 영유아, 아동, 청소년, 청년, 중장년, 노년, 임신·출산
+  - `householdStatus`: 다문화·탈북민, 다자녀, 보훈대상자, 장애인, 저소득, 한부모·조손
+  - `interestTheme`: 신체건강, 정신건강, 생활지원, 주거, 일자리, 문화·여가, 안전·위기, 임신·출산, 보육, 교육, 입양·위탁, 보호·돌봄, 서민금융, 법률
 - 응답: `201 Created`, 바디 없음
 
 ## 로그인 - **POST** `/users/login`
@@ -58,12 +53,12 @@
   "id": 1,
   "email": "user@example.com",
   "name": "홍길동",
-  "life_cycle_code": "004",
-  "household_status_code": "020",
-  "interest_theme_code": "030",
+  "lifeCycle": "청년",
+  "householdStatus": "다자녀",
+  "interestTheme": "생활지원",
   "age": 29,
-  "sido_name": "서울특별시",
-  "sigungu_name": "강남구",
+  "sidoName": "서울특별시",
+  "sigunguName": "강남구",
   "role": "USER"
 }
 ```
@@ -75,12 +70,12 @@
 ```json
 {
   "name": "김철수",
-  "life_cycle_code": "005",
-  "household_status_code": "030",
-  "interest_theme_code": "040",
+  "lifeCycle": "중장년",
+  "householdStatus": "보훈대상자",
+  "interestTheme": "주거",
   "age": 35,
-  "sido_name": "경기도",
-  "sigungu_name": "수원시"
+  "sidoName": "경기도",
+  "sigunguName": "수원시"
 }
 ```
 - 응답: `204 No Content`, 바디 없음
@@ -170,6 +165,49 @@
   }
 ]
 ```
+
+## 복지 서비스 상세 조회 - **GET** `/welfare-services/{serviceId}`
+- 설명: 복지 서비스 상세 정보 조회 (조회수 자동 증가, 인증 불필요)
+- Path 파라미터: `serviceId` - 복지 서비스 ID
+- 응답 예시:
+```json
+{
+  "serviceId": "WF12345",
+  "serviceName": "청년 주거 지원 사업",
+  "serviceSummary": "청년층의 주거 안정을 위한 지원",
+  "aiSummary": "만 19-34세 청년에게 월세 보증금 지원",
+  "ctpvNm": "서울특별시",
+  "sggNm": "강남구",
+  "bizChrDeptNm": "주거복지과",
+  "supportType": "현금",
+  "supportCycle": "월별",
+  "applicationMethod": "온라인",
+  "lifeCycleArray": "[\"004\"]",
+  "targetArray": "[\"050\"]",
+  "interestThemeArray": "[\"040\"]",
+  "supportTargetContent": "만 19-34세 청년 중 소득 기준 충족자",
+  "selectionCriteria": "중위소득 150% 이하",
+  "serviceContent": "월세 최대 20만원, 보증금 최대 1000만원 지원",
+  "applicationMethodContent": "복지로 홈페이지에서 온라인 신청",
+  "inquiryCount": 1523,
+  "detailLink": "https://example.com/welfare/12345",
+  "lastModifiedDate": "2024-12-01",
+  "serviceType": "LOCAL",
+  "serviceUrl": "https://example.com",
+  "site": "복지로",
+  "contact": "02-1234-5678",
+  "department": "주거복지과",
+  "organization": "서울특별시청",
+  "baseYear": 2024,
+  "organizationName": "서울시 주거복지센터",
+  "projectStartDate": "2024-01-01",
+  "projectEndDate": "2024-12-31",
+  "requiredDocuments": "신분증, 소득증빙서류",
+  "etc": "기타 상세 정보",
+  "householdStatus": "청년 1인 가구"
+}
+```
+- 참고: 이 API 호출 후 사용자가 로그인한 상태라면 `POST /recent-views/{serviceId}`도 함께 호출 필요
 
 ## 토큰 포맷
 - Access Token: JWT, 인증이 필요한 요청에 `Authorization: Bearer {accessToken}` 헤더 사용

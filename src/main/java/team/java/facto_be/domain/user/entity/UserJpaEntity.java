@@ -42,14 +42,14 @@ public class UserJpaEntity extends BaseTimeEntity {
     @Column(name = "name", nullable = false)
     private String name;
 
-    @Column(name = "life_cycle_code", nullable = false, length = 3)
-    private String lifeCycleCode;
+    @Column(name = "life_cycle", nullable = false, length = 20)
+    private String lifeCycle;
 
-    @Column(name = "household_status_code", nullable = false, length = 3)
-    private String householdStatusCode;
+    @Column(name = "household_status", nullable = false, length = 20)
+    private String householdStatus;
 
-    @Column(name = "interest_theme_code", nullable = false, length = 3)
-    private String interestThemeCode;
+    @Column(name = "interest_theme", nullable = false, length = 20)
+    private String interestTheme;
 
     @Column(name = "age", nullable = false)
     private Integer age;
@@ -65,16 +65,16 @@ public class UserJpaEntity extends BaseTimeEntity {
     private Role role;
 
     public void updateProfile(String name,
-                              String lifeCycleCode,
-                              String householdStatusCode,
-                              String interestThemeCode,
+                              String lifeCycle,
+                              String householdStatus,
+                              String interestTheme,
                               Integer age,
                               String sidoName,
                               String sigunguName) {
         this.name = name;
-        this.lifeCycleCode = lifeCycleCode;
-        this.householdStatusCode = householdStatusCode;
-        this.interestThemeCode = interestThemeCode;
+        this.lifeCycle = lifeCycle;
+        this.householdStatus = householdStatus;
+        this.interestTheme = interestTheme;
         this.age = age;
         this.sidoName = sidoName;
         this.sigunguName = sigunguName;

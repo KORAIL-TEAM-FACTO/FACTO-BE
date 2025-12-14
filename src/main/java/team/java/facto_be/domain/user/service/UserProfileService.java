@@ -26,9 +26,9 @@ public class UserProfileService {
 
         user.updateProfile(
                 request.name(),
-                request.lifeCycleCode(),
-                request.householdStatusCode(),
-                request.interestThemeCode(),
+                request.lifeCycle(),
+                request.householdStatus(),
+                request.interestTheme(),
                 request.age(),
                 request.sidoName(),
                 request.sigunguName()
