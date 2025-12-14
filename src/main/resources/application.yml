@@ -1,9 +1,9 @@
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: ${DB_URL}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    url: ${DB_URL:jdbc:mysql://localhost:3306/FACTO}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:1234}
 
   servlet:
     multipart:
@@ -26,24 +26,20 @@ spring:
 
   data:
     redis:
-      host: ${REDIS_HOST}
-      port: ${REDIS_PORT}
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
 
   jackson:
     property-naming-strategy: SNAKE_CASE
 
   jwt:
-    header: ${JWT_HEADER}
-    prefix: ${JWT_PREFIX}
-    secret: ${JWT_SECRET}
+    header: ${JWT_HEADER:Authorization}
+    prefix: ${JWT_PREFIX:Bearer}
+    secret: ${JWT_SECRET:JWT_SECRET=myVeryLongSecretKeyForJwtTokenGeneration123456789}
     accessExpiration: 3600
     refreshExpiration: 604800
 
   threads:
     virtual:
       enabled: true
-
-local-welfare:
-  base-url: ${LOCAL_WELFARE_BASE_URL:https://apis.data.go.kr/B554287/LocalGovernmentWelfareInformations}
-  service-key: ${LOCAL_WELFARE_SERVICE_KEY}
 
