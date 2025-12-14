@@ -46,14 +46,14 @@ public class WelfareServiceRepositoryImpl implements WelfareServiceRepositoryCus
             builder.and(welfareServiceJpaEntity.interestThemeArray.contains(interestThemeCode));
         }
 
-        // 시도 필터
+        // 시도 필터 (부분 일치로 변경 - "대전" <-> "대전광역시" 매칭)
         if (sidoName != null && !sidoName.isEmpty()) {
-            builder.and(welfareServiceJpaEntity.ctpvNm.eq(sidoName));
+            builder.and(welfareServiceJpaEntity.ctpvNm.contains(sidoName));
         }
 
-        // 시군구 필터
+        // 시군구 필터 (부분 일치)
         if (sigunguName != null && !sigunguName.isEmpty()) {
-            builder.and(welfareServiceJpaEntity.sggNm.eq(sigunguName));
+            builder.and(welfareServiceJpaEntity.sggNm.contains(sigunguName));
         }
 
         // 서비스 타입 필터 (CENTRAL, LOCAL, PRIVATE)
@@ -79,6 +79,85 @@ public class WelfareServiceRepositoryImpl implements WelfareServiceRepositoryCus
                                 .or(welfareServiceJpaEntity.aiSummary.contains(keyword))
                                 .or(welfareServiceJpaEntity.serviceContent.contains(keyword))
                 )
+                .orderBy(welfareServiceJpaEntity.inquiryCount.desc())
+                .limit(limit)
+                .fetch();
+    }
+
+    @Override
+    public List<WelfareServiceJpaEntity> searchByRegionAndCategory(
+            String region,
+            String category,
+            String serviceType,
+            int limit
+    ) {
+        BooleanBuilder builder = new BooleanBuilder();
+
+        // 지역 필터 (부분 일치)
+        if (region != null && !region.isEmpty()) {
+            builder.and(
+                    welfareServiceJpaEntity.ctpvNm.contains(region)
+                            .or(welfareServiceJpaEntity.sggNm.contains(region))
+            );
+        }
+
+        // 카테고리 필터 (서비스명, 요약, 내용에서 검색)
+        if (category != null && !category.isEmpty()) {
+            builder.and(
+                    welfareServiceJpaEntity.serviceName.contains(category)
+                            .or(welfareServiceJpaEntity.serviceSummary.contains(category))
+                            .or(welfareServiceJpaEntity.aiSummary.contains(category))
+                            .or(welfareServiceJpaEntity.serviceContent.contains(category))
+                            .or(welfareServiceJpaEntity.lifeCycleArray.contains(category))
+                            .or(welfareServiceJpaEntity.targetArray.contains(category))
+                            .or(welfareServiceJpaEntity.interestThemeArray.contains(category))
+            );
+        }
+
+        // 서비스 타입 필터
+        if (serviceType != null && !serviceType.isEmpty()) {
+            builder.and(welfareServiceJpaEntity.serviceType.eq(serviceType));
+        }
+
+        return queryFactory
+                .selectFrom(welfareServiceJpaEntity)
+                .where(builder)
+                .orderBy(welfareServiceJpaEntity.inquiryCount.desc())
+                .limit(limit)
+                .fetch();
+    }
+
+    @Override
+    public List<WelfareServiceJpaEntity> searchByKeywordWithRegion(
+            String sidoName,
+            String sigunguName,
+            String keyword,
+            int limit
+    ) {
+        BooleanBuilder builder = new BooleanBuilder();
+
+        // 키워드 필터 (필수)
+        if (keyword != null && !keyword.isEmpty()) {
+            builder.and(
+                    welfareServiceJpaEntity.serviceName.contains(keyword)
+                            .or(welfareServiceJpaEntity.serviceSummary.contains(keyword))
+                            .or(welfareServiceJpaEntity.aiSummary.contains(keyword))
+                            .or(welfareServiceJpaEntity.serviceContent.contains(keyword))
+            );
+        }
+
+        // 지역 필터 (부분 일치) - 시도 또는 시군구가 있으면 해당 지역으로 제한
+        if (sidoName != null && !sidoName.isEmpty()) {
+            builder.and(welfareServiceJpaEntity.ctpvNm.contains(sidoName));
+        }
+
+        if (sigunguName != null && !sigunguName.isEmpty()) {
+            builder.and(welfareServiceJpaEntity.sggNm.contains(sigunguName));
+        }
+
+        return queryFactory
+                .selectFrom(welfareServiceJpaEntity)
+                .where(builder)
                 .orderBy(welfareServiceJpaEntity.inquiryCount.desc())
                 .limit(limit)
                 .fetch();

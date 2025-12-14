@@ -5,6 +5,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 
 /**
  * QueryDSL 설정 클래스.
@@ -13,6 +14,7 @@ import org.springframework.context.annotation.Configuration;
  * 타입 안전한 쿼리 작성을 가능하게 합니다.
  */
 @Configuration
+@Profile("!test")
 public class QueryDslConfig {
 
     @PersistenceContext
