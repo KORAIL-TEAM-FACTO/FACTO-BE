@@ -45,6 +45,10 @@ public class ChatService {
     private final SystemPromptProvider systemPromptProvider;
     private final UserFacade userFacade;
 
+    private static final int BATCH_SIZE = 50;
+    private static final int CHUNK_SIZE = 700;
+    private static final int CHUNK_OVERLAP = 100;
+
     public record ChatResult(String sessionId, String message, QueryType queryType) {}
 
     private record ChatContext(ChatSession session, String message) {}
@@ -229,10 +233,20 @@ public class ChatService {
      * =========================
      * VectorStore 초기화
      * =========================
+     * ✅ QuestionAnswerAdvisor가 활성화되어 RAG(Retrieval-Augmented Generation)를 사용합니다.
+     *
+     * 설정:
+     * - similarityThreshold: 0.95 (매우 유사한 문서만 검색)
+     * - Tool 결과 우선 사용, RAG는 보조적 컨텍스트 제공
+     * - Batch + Chunk 방식으로 효율적 초기화
+     *
+     * 초기화 후 복지 서비스 데이터가 벡터 임베딩으로 저장되어
+     * 의미론적 검색(Semantic Search)이 가능합니다.
      */
+    @Transactional(readOnly = true)
     public void initializeVectorStore() {
 
-        log.info("VectorStore 초기화 시작");
+        log.info("✅ VectorStore 초기화 시작 (Batch + Chunk 적용, RAG 활성화)");
 
         List<WelfareServiceJpaEntity> services =
                 welfareServiceRepository.findAll();
@@ -242,13 +256,32 @@ public class ChatService {
             return;
         }
 
-        List<Document> documents = services.stream()
-                .map(this::toDocument)
-                .toList();
+        List<Document> buffer = new ArrayList<>(BATCH_SIZE);
+        int totalChunks = 0;
 
-        vectorStore.add(documents);
+        for (WelfareServiceJpaEntity service : services) {
 
-        log.info("VectorStore 초기화 완료 - {}건", documents.size());
+            List<Document> docs = toDocuments(service);
+            totalChunks += docs.size();
+
+            for (Document doc : docs) {
+                buffer.add(doc);
+
+                if (buffer.size() == BATCH_SIZE) {
+                    vectorStore.add(buffer);
+                    log.info("VectorStore batch add 완료 ({}건)", buffer.size());
+                    buffer.clear();
+                }
+            }
+        }
+
+        if (!buffer.isEmpty()) {
+            vectorStore.add(buffer);
+            log.info("VectorStore 마지막 batch add 완료 ({}건)", buffer.size());
+        }
+
+        log.info("VectorStore 초기화 완료 - 서비스 {}건 → 총 Chunk {}건",
+                services.size(), totalChunks);
     }
 
     private ChatContext prepareContext(String sessionId, String message, Long userId) {
@@ -280,46 +313,75 @@ public class ChatService {
         chatSessionRepository.save(session);
     }
 
-    private Document toDocument(WelfareServiceJpaEntity w) {
+    private List<Document> toDocuments(WelfareServiceJpaEntity w) {
+
+        String fullText = buildContent(w);
+
+        List<Document> documents = new ArrayList<>();
+
+        for (int start = 0; start < fullText.length(); start += (CHUNK_SIZE - CHUNK_OVERLAP)) {
+
+            int end = Math.min(start + CHUNK_SIZE, fullText.length());
+            String chunk = fullText.substring(start, end);
+
+            Map<String, Object> metadata = buildMetadata(w);
+            metadata.put("chunkStart", start);
+
+            documents.add(new Document(chunk, metadata));
+
+            if (end == fullText.length()) {
+                break;
+            }
+        }
+
+        return documents;
+    }
+
+    private String buildContent(WelfareServiceJpaEntity w) {
 
         StringBuilder content = new StringBuilder();
 
-        content.append("서비스명: ")
-                .append(w.getServiceName())
-                .append("\n");
+        content.append("서비스명: ").append(w.getServiceName()).append("\n");
 
         String summary =
                 w.getAiSummary() != null
                         ? w.getAiSummary()
                         : w.getServiceSummary();
 
-        if (summary != null) {
-            content.append("요약: ")
-                    .append(summary)
-                    .append("\n");
+        if (summary != null && !summary.isBlank()) {
+            content.append("요약: ").append(summary).append("\n");
         }
 
-        if (w.getServiceContent() != null) {
-            content.append("내용: ")
-                    .append(w.getServiceContent())
-                    .append("\n");
+        if (w.getServiceContent() != null && !w.getServiceContent().isBlank()) {
+            content.append("내용: ").append(w.getServiceContent()).append("\n");
         }
 
         if (w.getCtpvNm() != null) {
-            content.append("지역: ")
-                    .append(w.getCtpvNm());
-
+            content.append("지역: ").append(w.getCtpvNm());
             if (w.getSggNm() != null) {
                 content.append(" ").append(w.getSggNm());
             }
             content.append("\n");
         }
 
+        return content.toString();
+    }
+
+    private Map<String, Object> buildMetadata(WelfareServiceJpaEntity w) {
+
         Map<String, Object> metadata = new HashMap<>();
+
         metadata.put("serviceId", w.getServiceId());
         metadata.put("serviceName", w.getServiceName());
         metadata.put("serviceType", w.getServiceType());
 
-        return new Document(content.toString(), metadata);
+        if (w.getCtpvNm() != null) {
+            metadata.put("ctpvNm", w.getCtpvNm());
+        }
+        if (w.getSggNm() != null) {
+            metadata.put("sggNm", w.getSggNm());
+        }
+
+        return metadata;
     }
 }
