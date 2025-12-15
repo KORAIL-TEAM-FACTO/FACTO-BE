@@ -72,46 +72,10 @@ public class PersonalizedWelfareRecommendationTool {
             }
             profileSummary.append("\n\n");
 
-            // 1단계: 생애주기 + 지역으로 검색
-            // JSON 배열을 파싱하여 개별 항목으로 검색
+            // 사용자 프로필 기반 복지 서비스 검색 (다단계 fallback 포함)
             List<WelfareServiceJpaEntity> results = searchWithUserProfile(user);
 
-            log.info("1단계 검색 결과: {}개", results.size());
-
-            // 2단계: 결과가 부족하면 지역만으로 재검색
-            if (results.size() < 5) {
-                log.info("결과 부족 ({}/{}), 지역 기반 검색으로 fallback", results.size(), DEFAULT_LIMIT);
-                List<WelfareServiceJpaEntity> regionalResults = welfareServiceRepository.searchByRegionAndCategory(
-                        user.getSidoName(),
-                        user.getLifeCycle(),
-                        null,
-                        DEFAULT_LIMIT - results.size()
-                );
-
-                // 중복 제거하며 추가
-                for (WelfareServiceJpaEntity service : regionalResults) {
-                    if (results.stream().noneMatch(s -> s.getServiceId().equals(service.getServiceId()))) {
-                        results.add(service);
-                    }
-                }
-            }
-
-            // 3단계: 여전히 부족하면 생애주기 키워드 + 지역 조건 유지하며 검색
-            if (results.size() < 3) {
-                log.info("여전히 결과 부족 ({}/{}), 지역 조건 유지하며 키워드 검색", results.size(), DEFAULT_LIMIT);
-                List<WelfareServiceJpaEntity> keywordResults = welfareServiceRepository.searchByKeywordWithRegion(
-                        user.getSidoName(),
-                        user.getSigunguName(),
-                        user.getLifeCycle(),
-                        DEFAULT_LIMIT - results.size()
-                );
-
-                for (WelfareServiceJpaEntity service : keywordResults) {
-                    if (results.stream().noneMatch(s -> s.getServiceId().equals(service.getServiceId()))) {
-                        results.add(service);
-                    }
-                }
-            }
+            log.info("최종 검색 결과: {}개", results.size());
 
             if (results.isEmpty()) {
                 return profileSummary.toString() +
@@ -253,7 +217,7 @@ public class PersonalizedWelfareRecommendationTool {
             // 모든 조합으로 검색 (OR 조건)
             List<WelfareServiceJpaEntity> allResults = new ArrayList<>();
 
-            // 기본 검색: 생애주기 + 지역만
+            // 1차 검색: 생애주기 + 지역
             List<WelfareServiceJpaEntity> baseResults = welfareServiceRepository.searchWelfareServices(
                     user.getLifeCycle(),
                     null,
@@ -261,14 +225,34 @@ public class PersonalizedWelfareRecommendationTool {
                     user.getSidoName(),
                     user.getSigunguName(),
                     null,
-                    DEFAULT_LIMIT * 3  // 필터링 전이므로 더 많이 가져옴
+                    DEFAULT_LIMIT * 3
             );
 
-            log.info("기본 검색 결과: {}개", baseResults.size());
-
-            // 기본 검색 결과를 모두 추가 (생애주기 + 지역은 이미 만족)
-            // 가구상태와 관심테마가 없어도 결과를 표시해야 함
+            log.info("1차 검색 (생애주기+지역) 결과: {}개", baseResults.size());
             allResults.addAll(baseResults);
+
+            // 2차 검색: 결과가 부족하면 지역만으로 검색 (생애주기 조건 완화)
+            if (allResults.size() < DEFAULT_LIMIT) {
+                log.info("결과 부족, 지역만으로 추가 검색 시도");
+                List<WelfareServiceJpaEntity> regionOnlyResults = welfareServiceRepository.searchWelfareServices(
+                        null,  // 생애주기 조건 제거
+                        null,
+                        null,
+                        user.getSidoName(),
+                        user.getSigunguName(),
+                        null,
+                        DEFAULT_LIMIT * 2
+                );
+
+                log.info("2차 검색 (지역만) 결과: {}개", regionOnlyResults.size());
+
+                // 중복 제거하며 추가
+                for (WelfareServiceJpaEntity service : regionOnlyResults) {
+                    if (allResults.stream().noneMatch(s -> s.getServiceId().equals(service.getServiceId()))) {
+                        allResults.add(service);
+                    }
+                }
+            }
 
             // 매칭 점수 높은 순으로 정렬 후 상위 DEFAULT_LIMIT개 반환
             return allResults.stream()
