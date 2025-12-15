@@ -70,10 +70,14 @@ public class PersonalizedWelfareRecommendationTool {
             profileSummary.append("\n\n");
 
             // 1단계: 생애주기 + 지역으로 검색
+            // 빈 배열 문자열 "[]"을 null로 처리
+            String householdStatus = isEmptyJsonArray(user.getHouseholdStatus()) ? null : user.getHouseholdStatus();
+            String interestTheme = isEmptyJsonArray(user.getInterestTheme()) ? null : user.getInterestTheme();
+
             List<WelfareServiceJpaEntity> results = welfareServiceRepository.searchWelfareServices(
                     user.getLifeCycle(),
-                    user.getHouseholdStatus(),
-                    user.getInterestTheme(),
+                    householdStatus,
+                    interestTheme,
                     user.getSidoName(),
                     user.getSigunguName(),
                     null,  // 모든 서비스 타입
@@ -225,5 +229,17 @@ public class PersonalizedWelfareRecommendationTool {
         if (sgg == null) return ctpv;
         if (ctpv == null) return sgg;
         return ctpv + " " + sgg;
+    }
+
+    /**
+     * JSON 배열 문자열이 빈 배열인지 확인
+     * "[]", null, "" 모두 true 반환
+     */
+    private boolean isEmptyJsonArray(String jsonArray) {
+        if (jsonArray == null || jsonArray.isBlank()) {
+            return true;
+        }
+        String trimmed = jsonArray.trim();
+        return trimmed.equals("[]") || trimmed.equals("[ ]");
     }
 }
