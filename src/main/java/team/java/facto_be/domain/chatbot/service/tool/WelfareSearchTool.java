@@ -121,6 +121,95 @@ public class WelfareSearchTool {
         return formatResults(results, "키워드(전국)");
     }
 
+    @Tool(description = """
+            특정 복지 서비스명으로 정확하게 검색합니다.
+            사용자가 구체적인 서비스명을 언급하거나 특정 서비스의 상세 정보를 요청할 때 사용하세요.
+            예: "청년내일채움공제", "국민취업지원제도", "청년도약계좌"
+
+            이 도구는 서비스명에서 정확하게 매칭되는 서비스를 찾아 매우 상세한 정보를 제공합니다.
+            """)
+    public String searchServiceByName(
+            @ToolParam(description = "복지 서비스명 (예: 청년내일채움공제, 국민취업지원제도)") String serviceName
+    ) {
+        log.info("서비스명 정확 검색 - 서비스명: {}", serviceName);
+
+        if (serviceName == null || serviceName.isBlank()) {
+            return "서비스명을 입력해주세요.";
+        }
+
+        List<WelfareServiceJpaEntity> results = welfareServiceRepository.searchByKeyword(serviceName, 5);
+        return formatDetailedResults(results, "서비스명 검색");
+    }
+
+    /**
+     * 상세 검색 결과 포맷팅 (서비스명 검색용 - 매우 상세한 정보 제공)
+     */
+    private String formatDetailedResults(List<WelfareServiceJpaEntity> results, String searchType) {
+        if (results.isEmpty()) {
+            return String.format("""
+                    ========================================
+                    ⚠️ 검색 결과: 0건 (결과 없음)
+                    ========================================
+                    [%s] 해당 이름의 복지 서비스를 찾지 못했습니다.
+                    서비스명을 정확하게 입력했는지 확인해주세요.
+                    ========================================
+                    """, searchType);
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("========================================\n");
+        sb.append(String.format("✅ 검색 결과: %d건 (결과 있음)\n", results.size()));
+        sb.append("========================================\n");
+        sb.append(String.format("[%s 검색결과 - 상세정보]\n\n", searchType));
+
+        // 상위 3개만 매우 상세하게 표시
+        int displayCount = Math.min(results.size(), 3);
+
+        for (int i = 0; i < displayCount; i++) {
+            WelfareServiceJpaEntity w = results.get(i);
+
+            sb.append("========================================\n");
+            sb.append(String.format("📋 [%d] %s\n", (i + 1), w.getServiceName()));
+            sb.append("========================================\n");
+
+            sb.append("🆔 서비스ID: ").append(nullToDash(w.getServiceId())).append("\n");
+            sb.append("📍 지역: ").append(composeRegion(w.getCtpvNm(), w.getSggNm())).append("\n");
+            sb.append("🏢 주관기관: ").append(nullToDash(w.getOrganization())).append("\n");
+            sb.append("🏛️ 담당부서: ").append(nullToDash(w.getBizChrDeptNm())).append("\n\n");
+
+            sb.append("💡 AI 요약:\n").append(formatParagraph(firstNonNull(w.getAiSummary(), w.getServiceSummary()))).append("\n\n");
+
+            sb.append("👥 지원대상:\n").append(formatParagraph(w.getSupportTargetContent())).append("\n");
+            sb.append("→ 생애주기: ").append(nullToDash(w.getLifeCycleArray())).append("\n");
+            sb.append("→ 대상구분: ").append(nullToDash(w.getTargetArray())).append("\n");
+            sb.append("→ 관심주제: ").append(nullToDash(w.getInterestThemeArray())).append("\n\n");
+
+            sb.append("💰 지원내용:\n").append(formatParagraph(w.getServiceContent())).append("\n");
+            sb.append("→ 지원유형: ").append(nullToDash(w.getSupportType())).append("\n");
+            sb.append("→ 지원주기: ").append(nullToDash(w.getSupportCycle())).append("\n\n");
+
+            sb.append("✅ 선정기준:\n").append(formatParagraph(w.getSelectionCriteria())).append("\n\n");
+
+            sb.append("📝 신청방법:\n").append(formatParagraph(w.getApplicationMethodContent())).append("\n");
+            sb.append("→ 신청방법: ").append(nullToDash(w.getApplicationMethod())).append("\n");
+            sb.append("→ 필수서류: ").append(formatParagraph(w.getRequiredDocuments())).append("\n\n");
+
+            sb.append("📞 문의처: ").append(nullToDash(w.getContact())).append("\n");
+            sb.append("🔗 상세링크: ").append(nullToDash(w.getDetailLink())).append("\n");
+
+            if (w.getEtc() != null && !w.getEtc().isBlank()) {
+                sb.append("📌 기타사항: ").append(formatParagraph(w.getEtc())).append("\n");
+            }
+            sb.append("\n");
+        }
+
+        if (results.size() > displayCount) {
+            sb.append(String.format("※ 이 외 %d개의 관련 서비스가 더 있습니다.\n", results.size() - displayCount));
+        }
+
+        return sb.toString();
+    }
+
     /**
      * 검색 결과 포맷팅
      */
@@ -184,6 +273,14 @@ public class WelfareSearchTool {
     private String truncate(String text, int maxLength) {
         if (text == null || text.length() <= maxLength) return text;
         return text.substring(0, maxLength) + "...";
+    }
+
+    private String formatParagraph(String text) {
+        if (text == null || text.isBlank()) {
+            return "-";
+        }
+        // 긴 텍스트를 그대로 반환 (AI가 읽기 좋도록)
+        return text.trim();
     }
 
     private String normalize(String v) {

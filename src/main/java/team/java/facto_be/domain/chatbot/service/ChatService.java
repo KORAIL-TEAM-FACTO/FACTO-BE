@@ -12,6 +12,7 @@ import team.java.facto_be.domain.chatbot.domain.entity.ChatMessage;
 import team.java.facto_be.domain.chatbot.domain.entity.ChatSession;
 import team.java.facto_be.domain.chatbot.domain.repository.ChatMessageRepository;
 import team.java.facto_be.domain.chatbot.domain.repository.ChatSessionRepository;
+import team.java.facto_be.domain.chatbot.service.context.UserContextHolder;
 import team.java.facto_be.domain.chatbot.service.dto.ChatMessageResponse;
 import team.java.facto_be.domain.chatbot.service.dto.ChatSessionSummaryResponse;
 import team.java.facto_be.domain.chatbot.service.dto.WebSocketMessage;
@@ -65,13 +66,16 @@ public class ChatService {
                            Consumer<Throwable> onError) {
 
         try {
+            // ⚠️ Tool에서 사용자 정보를 조회할 수 있도록 ThreadLocal에 userId 설정
+            UserContextHolder.setUserId(request.getUserId());
+
             ChatContext context = prepareContext(request.getSessionId(), request.getMessage(), request.getUserId());
 
             // 질문 유형 분류
             QueryType queryType = queryTypeClassifier.classify(context.message());
             String systemPrompt = systemPromptProvider.getSystemPrompt(queryType);
 
-            log.info("스트리밍 채팅 - 질문 유형: {}", queryType);
+            log.info("스트리밍 채팅 - 질문 유형: {}, userId: {}", queryType, request.getUserId());
 
             StringBuilder fullResponse = new StringBuilder();
 
@@ -93,9 +97,14 @@ public class ChatService {
                         onComplete.run();
                     })
                     .doOnError(error -> handleStreamingError(onError, error))
+                    .doFinally(signalType -> {
+                        // ⚠️ 반드시 ThreadLocal 정리 (메모리 누수 방지)
+                        UserContextHolder.clear();
+                    })
                     .subscribe();
 
         } catch (Exception e) {
+            UserContextHolder.clear();  // 예외 발생 시에도 정리
             handleStreamingError(onError, e);
         }
     }
@@ -108,18 +117,27 @@ public class ChatService {
     @Transactional
     public ChatResult chat(String sessionId, String message, Long userId) {
 
-        ChatContext context = prepareContext(sessionId, message, userId);
+        try {
+            // ⚠️ Tool에서 사용자 정보를 조회할 수 있도록 ThreadLocal에 userId 설정
+            UserContextHolder.setUserId(userId);
 
-        // 질문 유형 분류
-        QueryType queryType = queryTypeClassifier.classify(context.message());
-        String systemPrompt = systemPromptProvider.getSystemPrompt(queryType);
+            ChatContext context = prepareContext(sessionId, message, userId);
 
-        log.info("REST 채팅 - 질문 유형: {}", queryType);
+            // 질문 유형 분류
+            QueryType queryType = queryTypeClassifier.classify(context.message());
+            String systemPrompt = systemPromptProvider.getSystemPrompt(queryType);
 
-        String response = invokeChatModel(context.session(), context.message(), systemPrompt);
-        saveAssistantMessage(context.session(), response);
+            log.info("REST 채팅 - 질문 유형: {}, userId: {}", queryType, userId);
 
-        return new ChatResult(context.session().getSessionId(), response, queryType);
+            String response = invokeChatModel(context.session(), context.message(), systemPrompt);
+            saveAssistantMessage(context.session(), response);
+
+            return new ChatResult(context.session().getSessionId(), response, queryType);
+
+        } finally {
+            // ⚠️ 반드시 ThreadLocal 정리 (메모리 누수 방지)
+            UserContextHolder.clear();
+        }
     }
 
     /**
@@ -190,14 +208,40 @@ public class ChatService {
     @Transactional(readOnly = true)
     public List<ChatMessageResponse> getChatHistory(String sessionId) {
 
+        // 1. sessionId로 세션 조회
         ChatSession session = chatSessionRepository
-                .findBySessionIdAndUserId(sessionId, userFacade.currentUser().getId())
-                .orElseThrow(() -> new IllegalStateException("세션 접근 권한이 없습니다."));
+                .findBySessionId(sessionId)
+                .orElseThrow(() -> new IllegalStateException("세션을 찾을 수 없습니다."));
+
+        // 2. 현재 사용자 ID 조회 (익명 사용자는 null)
+        Long currentUserId = resolveCurrentUserId();
+        Long sessionUserId = session.getUserId();
+
+        // 3. 소유권 검증: 세션의 userId와 현재 userId가 일치해야 함
+        if (!java.util.Objects.equals(currentUserId, sessionUserId)) {
+            log.warn("세션 접근 권한 거부 - sessionId: {}, currentUserId: {}, sessionUserId: {}",
+                    sessionId, currentUserId, sessionUserId);
+            throw new IllegalStateException("세션 접근 권한이 없습니다.");
+        }
+
+        log.info("채팅 히스토리 조회 성공 - sessionId: {}, userId: {}", sessionId, currentUserId);
 
         return chatMessageRepository.findByChatSessionOrderByCreatedAtAsc(session)
                 .stream()
                 .map(ChatMessageResponse::from)
                 .toList();
+    }
+
+    /**
+     * 현재 사용자 ID를 안전하게 조회합니다.
+     * 익명 사용자(비로그인)인 경우 null을 반환합니다.
+     */
+    private Long resolveCurrentUserId() {
+        try {
+            return userFacade.currentUser().getId();
+        } catch (Exception e) {
+            return null;  // 익명 사용자
+        }
     }
 
     /**
@@ -220,9 +264,23 @@ public class ChatService {
     @Transactional
     public void deleteSession(String sessionId) {
 
+        // 1. sessionId로 세션 조회
         ChatSession session = chatSessionRepository
-                .findBySessionIdAndUserId(sessionId, userFacade.currentUser().getId())
-                .orElseThrow(() -> new IllegalStateException("세션 접근 권한이 없습니다."));
+                .findBySessionId(sessionId)
+                .orElseThrow(() -> new IllegalStateException("세션을 찾을 수 없습니다."));
+
+        // 2. 현재 사용자 ID 조회 (익명 사용자는 null)
+        Long currentUserId = resolveCurrentUserId();
+        Long sessionUserId = session.getUserId();
+
+        // 3. 소유권 검증: 세션의 userId와 현재 userId가 일치해야 함
+        if (!java.util.Objects.equals(currentUserId, sessionUserId)) {
+            log.warn("세션 삭제 권한 거부 - sessionId: {}, currentUserId: {}, sessionUserId: {}",
+                    sessionId, currentUserId, sessionUserId);
+            throw new IllegalStateException("세션 삭제 권한이 없습니다.");
+        }
+
+        log.info("세션 삭제 - sessionId: {}, userId: {}", sessionId, currentUserId);
 
         chatMemory.clear(sessionId);
         chatMessageRepository.deleteByChatSession(session);
