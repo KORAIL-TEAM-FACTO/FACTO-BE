@@ -14,8 +14,11 @@ import team.java.facto_be.domain.welfare.dto.response.RegionComparisonResponse;
 import team.java.facto_be.domain.welfare.dto.response.WelfareServiceResponse;
 import team.java.facto_be.domain.welfare.dto.response.WelfareServiceSummaryResponse;
 import team.java.facto_be.domain.welfare.entity.WelfareServiceJpaEntity;
+import team.java.facto_be.domain.welfare.entity.WelfareViewHistoryJpaEntity;
 import team.java.facto_be.domain.welfare.repository.WelfareServiceRepository;
+import team.java.facto_be.domain.welfare.repository.WelfareViewHistoryRepository;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,6 +38,7 @@ public class WelfareServiceService {
     private final UserFacade userFacade;
     private final ObjectMapper objectMapper;
     private final UserProfileHistoryRepository userProfileHistoryRepository;
+    private final WelfareViewHistoryRepository welfareViewHistoryRepository;
 
     /**
      * 서비스 이름으로 복지 서비스를 검색합니다.
@@ -146,7 +150,7 @@ public class WelfareServiceService {
     }
 
     /**
-     * 복지 서비스 상세 정보를 조회하고 조회수를 증가시킵니다.
+     * 복지 서비스 상세 정보를 조회하고 조회 이력을 저장합니다.
      *
      * @param serviceId 복지 서비스 ID
      * @return 복지 서비스 상세 정보
@@ -158,10 +162,40 @@ public class WelfareServiceService {
                 .findById(serviceId)
                 .orElseThrow(() -> new IllegalArgumentException("복지 서비스를 찾을 수 없습니다: " + serviceId));
 
-        // 조회수 증가
-        service.incrementInquiryCount();
+        // 조회 이력 저장 (중복 방지: 24시간 내 동일 사용자의 재조회는 기록하지 않음)
+        try {
+            UserJpaEntity user = userFacade.currentUser();
+            LocalDateTime oneDayAgo = LocalDateTime.now().minusHours(24);
 
-        return WelfareServiceResponse.from(service);
+            // 24시간 내 중복 조회 확인
+            boolean isDuplicate = welfareViewHistoryRepository
+                    .findFirstByUserIdAndServiceIdAndViewedAtAfterOrderByViewedAtDesc(
+                            user.getId(), serviceId, oneDayAgo
+                    )
+                    .isPresent();
+
+            if (!isDuplicate) {
+                WelfareViewHistoryJpaEntity viewHistory = WelfareViewHistoryJpaEntity.builder()
+                        .serviceId(serviceId)
+                        .userId(user.getId())
+                        .viewedAt(LocalDateTime.now())
+                        .build();
+                welfareViewHistoryRepository.save(viewHistory);
+            }
+        } catch (Exception e) {
+            // 비로그인 사용자의 경우 userId 없이 저장
+            WelfareViewHistoryJpaEntity viewHistory = WelfareViewHistoryJpaEntity.builder()
+                    .serviceId(serviceId)
+                    .userId(null)
+                    .viewedAt(LocalDateTime.now())
+                    .build();
+            welfareViewHistoryRepository.save(viewHistory);
+        }
+
+        // 실시간 조회수 계산
+        long viewCount = welfareViewHistoryRepository.countByServiceId(serviceId);
+
+        return WelfareServiceResponse.from(service, (int) viewCount);
     }
 
     /**
