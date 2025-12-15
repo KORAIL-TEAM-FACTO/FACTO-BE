@@ -246,6 +246,10 @@ public class PersonalizedWelfareRecommendationTool {
             List<String> householdStatusList = parseJsonArray(user.getHouseholdStatus());
             List<String> interestThemeList = parseJsonArray(user.getInterestTheme());
 
+            log.info("사용자 프로필 - 생애주기: {}, 지역: {} {}, 가구상태: {}, 관심테마: {}",
+                    user.getLifeCycle(), user.getSidoName(), user.getSigunguName(),
+                    householdStatusList, interestThemeList);
+
             // 모든 조합으로 검색 (OR 조건)
             List<WelfareServiceJpaEntity> allResults = new ArrayList<>();
 
@@ -260,13 +264,11 @@ public class PersonalizedWelfareRecommendationTool {
                     DEFAULT_LIMIT * 3  // 필터링 전이므로 더 많이 가져옴
             );
 
-            // 사용자 프로필과 일치하는 항목 필터링 및 점수 계산
-            for (WelfareServiceJpaEntity service : baseResults) {
-                int matchScore = calculateMatchScore(service, householdStatusList, interestThemeList);
-                if (matchScore >= 0) {  // 기본 조건(생애주기+지역)은 이미 만족
-                    allResults.add(service);
-                }
-            }
+            log.info("기본 검색 결과: {}개", baseResults.size());
+
+            // 기본 검색 결과를 모두 추가 (생애주기 + 지역은 이미 만족)
+            // 가구상태와 관심테마가 없어도 결과를 표시해야 함
+            allResults.addAll(baseResults);
 
             // 매칭 점수 높은 순으로 정렬 후 상위 DEFAULT_LIMIT개 반환
             return allResults.stream()
