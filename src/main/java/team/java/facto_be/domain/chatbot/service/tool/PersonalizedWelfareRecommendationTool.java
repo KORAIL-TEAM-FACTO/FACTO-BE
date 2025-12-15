@@ -1,5 +1,7 @@
 package team.java.facto_be.domain.chatbot.service.tool;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.Tool;
@@ -22,6 +24,7 @@ public class PersonalizedWelfareRecommendationTool {
 
     private final WelfareServiceRepository welfareServiceRepository;
     private final UserFacade userFacade;
+    private final ObjectMapper objectMapper;
     private static final int DEFAULT_LIMIT = 15;
 
     @Tool(description = """
@@ -70,19 +73,10 @@ public class PersonalizedWelfareRecommendationTool {
             profileSummary.append("\n\n");
 
             // 1단계: 생애주기 + 지역으로 검색
-            // 빈 배열 문자열 "[]"을 null로 처리
-            String householdStatus = isEmptyJsonArray(user.getHouseholdStatus()) ? null : user.getHouseholdStatus();
-            String interestTheme = isEmptyJsonArray(user.getInterestTheme()) ? null : user.getInterestTheme();
+            // JSON 배열을 파싱하여 개별 항목으로 검색
+            List<WelfareServiceJpaEntity> results = searchWithUserProfile(user);
 
-            List<WelfareServiceJpaEntity> results = welfareServiceRepository.searchWelfareServices(
-                    user.getLifeCycle(),
-                    householdStatus,
-                    interestTheme,
-                    user.getSidoName(),
-                    user.getSigunguName(),
-                    null,  // 모든 서비스 타입
-                    DEFAULT_LIMIT
-            );
+            log.info("1단계 검색 결과: {}개", results.size());
 
             // 2단계: 결과가 부족하면 지역만으로 재검색
             if (results.size() < 5) {
@@ -241,5 +235,126 @@ public class PersonalizedWelfareRecommendationTool {
         }
         String trimmed = jsonArray.trim();
         return trimmed.equals("[]") || trimmed.equals("[ ]");
+    }
+
+    /**
+     * 사용자 프로필을 기반으로 복지 서비스 검색 (JSON 배열 개별 항목 처리)
+     */
+    private List<WelfareServiceJpaEntity> searchWithUserProfile(UserJpaEntity user) {
+        try {
+            // JSON 배열을 List로 파싱
+            List<String> householdStatusList = parseJsonArray(user.getHouseholdStatus());
+            List<String> interestThemeList = parseJsonArray(user.getInterestTheme());
+
+            // 모든 조합으로 검색 (OR 조건)
+            List<WelfareServiceJpaEntity> allResults = new ArrayList<>();
+
+            // 기본 검색: 생애주기 + 지역만
+            List<WelfareServiceJpaEntity> baseResults = welfareServiceRepository.searchWelfareServices(
+                    user.getLifeCycle(),
+                    null,
+                    null,
+                    user.getSidoName(),
+                    user.getSigunguName(),
+                    null,
+                    DEFAULT_LIMIT * 3  // 필터링 전이므로 더 많이 가져옴
+            );
+
+            // 사용자 프로필과 일치하는 항목 필터링 및 점수 계산
+            for (WelfareServiceJpaEntity service : baseResults) {
+                int matchScore = calculateMatchScore(service, householdStatusList, interestThemeList);
+                if (matchScore >= 0) {  // 기본 조건(생애주기+지역)은 이미 만족
+                    allResults.add(service);
+                }
+            }
+
+            // 매칭 점수 높은 순으로 정렬 후 상위 DEFAULT_LIMIT개 반환
+            return allResults.stream()
+                    .sorted((a, b) -> {
+                        int scoreA = calculateMatchScore(a, householdStatusList, interestThemeList);
+                        int scoreB = calculateMatchScore(b, householdStatusList, interestThemeList);
+                        return Integer.compare(scoreB, scoreA);
+                    })
+                    .limit(DEFAULT_LIMIT)
+                    .toList();
+
+        } catch (Exception e) {
+            log.error("프로필 기반 검색 실패, 기본 검색으로 fallback", e);
+            // 실패 시 기본 검색
+            return welfareServiceRepository.searchWelfareServices(
+                    user.getLifeCycle(),
+                    null,
+                    null,
+                    user.getSidoName(),
+                    user.getSigunguName(),
+                    null,
+                    DEFAULT_LIMIT
+            );
+        }
+    }
+
+    /**
+     * JSON 배열 문자열을 List로 파싱
+     */
+    private List<String> parseJsonArray(String jsonArray) {
+        if (isEmptyJsonArray(jsonArray)) {
+            return new ArrayList<>();
+        }
+        try {
+            return objectMapper.readValue(jsonArray, new TypeReference<List<String>>() {});
+        } catch (Exception e) {
+            log.warn("JSON 파싱 실패: {}", jsonArray, e);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * 복지 서비스와 사용자 프로필의 매칭 점수 계산
+     */
+    private int calculateMatchScore(WelfareServiceJpaEntity service,
+                                    List<String> userHouseholdStatus,
+                                    List<String> userInterestTheme) {
+        int score = 0;
+
+        // 가구상태 매칭 확인
+        if (!userHouseholdStatus.isEmpty() && service.getTargetArray() != null) {
+            List<String> serviceTargets = parseJsonArray(service.getTargetArray());
+            for (String userStatus : userHouseholdStatus) {
+                if (containsWithSpaceVariations(serviceTargets, userStatus)) {
+                    score += 10;  // 가구상태 일치 시 +10점
+                }
+            }
+        }
+
+        // 관심테마 매칭 확인
+        if (!userInterestTheme.isEmpty() && service.getInterestThemeArray() != null) {
+            List<String> serviceThemes = parseJsonArray(service.getInterestThemeArray());
+            for (String userTheme : userInterestTheme) {
+                if (containsWithSpaceVariations(serviceThemes, userTheme)) {
+                    score += 5;  // 관심테마 일치 시 +5점
+                }
+            }
+        }
+
+        return score;
+    }
+
+    /**
+     * 공백 변형을 고려한 리스트 포함 여부 확인
+     */
+    private boolean containsWithSpaceVariations(List<String> list, String target) {
+        if (list == null || target == null) return false;
+
+        String normalized = target.replace(" ", "");
+        String withSpace = target.replace("·", " · ");
+
+        for (String item : list) {
+            if (item.equals(target) ||
+                item.replace(" ", "").equals(normalized) ||
+                item.equals(withSpace)) {
+                return true;
+            }
+        }
+        return false;
     }
 }
