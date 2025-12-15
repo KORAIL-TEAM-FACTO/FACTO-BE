@@ -70,35 +70,33 @@ public class WelfareServiceService {
         // 현재 사용자 정보 가져오기
         UserJpaEntity user = userFacade.currentUser();
 
-        // 현재 지역의 복지 서비스 개수 조회
-        List<WelfareServiceJpaEntity> currentRegionServices = welfareServiceRepository.searchWelfareServices(
+        // 현재 지역의 복지 서비스 개수 조회 (COUNT 쿼리)
+        long currentCount = welfareServiceRepository.countWelfareServices(
                 user.getLifeCycle(),
                 null,
                 null,
                 user.getSidoName(),
                 user.getSigunguName(),
-                null,
-                Integer.MAX_VALUE  // 개수만 세기 위해 전체 조회
+                null
         );
 
-        // 새로운 지역의 복지 서비스 개수 조회
-        List<WelfareServiceJpaEntity> newRegionServices = welfareServiceRepository.searchWelfareServices(
+        // 새로운 지역의 복지 서비스 개수 조회 (COUNT 쿼리)
+        long newCount = welfareServiceRepository.countWelfareServices(
                 user.getLifeCycle(),
                 null,
                 null,
                 newSidoName,
                 newSigunguName,
-                null,
-                Integer.MAX_VALUE  // 개수만 세기 위해 전체 조회
+                null
         );
 
         return RegionComparisonResponse.of(
                 user.getSidoName(),
                 user.getSigunguName(),
-                currentRegionServices.size(),
+                (int) currentCount,
                 newSidoName,
                 newSigunguName,
-                newRegionServices.size()
+                (int) newCount
         );
     }
 
@@ -117,35 +115,33 @@ public class WelfareServiceService {
                 .findFirstByUserIdOrderByCreatedAtDesc(user.getId())
                 .orElseThrow(() -> new IllegalArgumentException("프로필 변경 이력이 없습니다."));
 
-        // 이전 지역의 복지 서비스 개수 조회 (이력의 old 생애주기 사용)
-        List<WelfareServiceJpaEntity> oldRegionServices = welfareServiceRepository.searchWelfareServices(
+        // 이전 지역의 복지 서비스 개수 조회 (COUNT 쿼리, 이력의 old 생애주기 사용)
+        long oldCount = welfareServiceRepository.countWelfareServices(
                 history.getOldLifeCycle(),
                 null,
                 null,
                 history.getOldSidoName(),
                 history.getOldSigunguName(),
-                null,
-                Integer.MAX_VALUE
+                null
         );
 
-        // 새로운 지역의 복지 서비스 개수 조회 (이력의 new 생애주기 사용)
-        List<WelfareServiceJpaEntity> newRegionServices = welfareServiceRepository.searchWelfareServices(
+        // 새로운 지역의 복지 서비스 개수 조회 (COUNT 쿼리, 이력의 new 생애주기 사용)
+        long newCount = welfareServiceRepository.countWelfareServices(
                 history.getNewLifeCycle(),
                 null,
                 null,
                 history.getNewSidoName(),
                 history.getNewSigunguName(),
-                null,
-                Integer.MAX_VALUE
+                null
         );
 
         return RegionComparisonResponse.of(
                 history.getOldSidoName(),
                 history.getOldSigunguName(),
-                oldRegionServices.size(),
+                (int) oldCount,
                 history.getNewSidoName(),
                 history.getNewSigunguName(),
-                newRegionServices.size()
+                (int) newCount
         );
     }
 

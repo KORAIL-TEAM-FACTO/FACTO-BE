@@ -177,4 +177,67 @@ public class WelfareServiceRepositoryImpl implements WelfareServiceRepositoryCus
                 .limit(limit)
                 .fetch();
     }
+
+    @Override
+    public long countWelfareServices(
+            String lifeCycleCode,
+            String householdStatusCode,
+            String interestThemeCode,
+            String sidoName,
+            String sigunguName,
+            String serviceType
+    ) {
+        BooleanBuilder builder = new BooleanBuilder();
+
+        // 생애주기 필터 (공백 제거 후 매칭)
+        if (lifeCycleCode != null && !lifeCycleCode.isEmpty()) {
+            String normalized = lifeCycleCode.replace(" ", "").replace("·", "·");
+            builder.and(
+                    welfareServiceJpaEntity.lifeCycleArray.contains(lifeCycleCode)
+                            .or(welfareServiceJpaEntity.lifeCycleArray.contains(normalized))
+                            .or(welfareServiceJpaEntity.lifeCycleArray.contains(lifeCycleCode.replace("·", " · ")))
+            );
+        }
+
+        // 대상 필터 (공백 제거 후 매칭)
+        if (householdStatusCode != null && !householdStatusCode.isEmpty()) {
+            String normalized = householdStatusCode.replace(" ", "");
+            builder.and(
+                    welfareServiceJpaEntity.targetArray.contains(householdStatusCode)
+                            .or(welfareServiceJpaEntity.targetArray.contains(normalized))
+                            .or(welfareServiceJpaEntity.targetArray.contains(householdStatusCode.replace("·", " · ")))
+            );
+        }
+
+        // 관심 테마 필터 (공백 제거 후 매칭)
+        if (interestThemeCode != null && !interestThemeCode.isEmpty()) {
+            String normalized = interestThemeCode.replace(" ", "");
+            builder.and(
+                    welfareServiceJpaEntity.interestThemeArray.contains(interestThemeCode)
+                            .or(welfareServiceJpaEntity.interestThemeArray.contains(normalized))
+                            .or(welfareServiceJpaEntity.interestThemeArray.contains(interestThemeCode.replace("·", " · ")))
+            );
+        }
+
+        // 시도 필터 (부분 일치)
+        if (sidoName != null && !sidoName.isEmpty()) {
+            builder.and(welfareServiceJpaEntity.ctpvNm.contains(sidoName));
+        }
+
+        // 시군구 필터 (부분 일치)
+        if (sigunguName != null && !sigunguName.isEmpty()) {
+            builder.and(welfareServiceJpaEntity.sggNm.contains(sigunguName));
+        }
+
+        // 서비스 타입 필터
+        if (serviceType != null && !serviceType.isEmpty()) {
+            builder.and(welfareServiceJpaEntity.serviceType.eq(serviceType));
+        }
+
+        return queryFactory
+                .select(welfareServiceJpaEntity.count())
+                .from(welfareServiceJpaEntity)
+                .where(builder)
+                .fetchOne();
+    }
 }

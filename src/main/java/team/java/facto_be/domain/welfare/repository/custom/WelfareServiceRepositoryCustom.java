@@ -78,4 +78,27 @@ public interface WelfareServiceRepositoryCustom {
             String keyword,
             int limit
     );
+
+    /**
+     * 복지 서비스 개수를 조회합니다 (COUNT 쿼리).
+     *
+     * <p>생애주기, 대상, 관심 테마, 지역 등으로 필터링하여
+     * 조건에 맞는 복지 서비스의 개수만 반환합니다.
+     *
+     * @param lifeCycleCode 생애주기 코드 (nullable)
+     * @param householdStatusCode 가구상태 코드 (nullable)
+     * @param interestThemeCode 관심 테마 코드 (nullable)
+     * @param sidoName 시도명 (nullable)
+     * @param sigunguName 시군구명 (nullable)
+     * @param serviceType 서비스 타입 (nullable)
+     * @return 검색된 복지 서비스 개수
+     */
+    long countWelfareServices(
+            String lifeCycleCode,
+            String householdStatusCode,
+            String interestThemeCode,
+            String sidoName,
+            String sigunguName,
+            String serviceType
+    );
 }

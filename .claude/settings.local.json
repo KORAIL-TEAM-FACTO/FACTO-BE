@@ -5,7 +5,8 @@
       "Bash(./gradlew build:*)",
       "Bash(./gradlew test:*)",
       "Bash(find:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(cat:*)"
     ]
   }
 }
