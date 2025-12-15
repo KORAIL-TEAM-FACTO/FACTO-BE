@@ -46,6 +46,29 @@ public class WelfareServiceController {
     }
 
     /**
+     * 서비스 이름으로 복지 서비스를 검색합니다.
+     *
+     * <p>프론트엔드 호출 시점:
+     * - 검색 페이지에서 사용자가 검색어 입력
+     *
+     * <p>동작:
+     * - service_name에 키워드가 포함된 복지 서비스 검색
+     * - 조회수 많은 순으로 정렬
+     * - 인증 불필요
+     *
+     * @param keyword 검색 키워드
+     * @param limit 조회 개수 (기본값: 50, 최대: 100)
+     * @return 검색된 복지 서비스 목록 (요약)
+     */
+    @GetMapping("/search")
+    public List<WelfareServiceSummaryResponse> searchWelfareServicesByName(
+            @RequestParam String keyword,
+            @RequestParam(required = false) Integer limit
+    ) {
+        return welfareServiceService.searchByServiceName(keyword, limit);
+    }
+
+    /**
      * 복지 서비스 상세 정보를 조회합니다.
      *
      * <p>프론트엔드 호출 시점:

@@ -33,6 +33,28 @@ public class WelfareServiceService {
     private final ObjectMapper objectMapper;
 
     /**
+     * 서비스 이름으로 복지 서비스를 검색합니다.
+     *
+     * @param keyword 검색 키워드
+     * @param limit 조회 개수 (선택, 기본값: 50, 최대: 100)
+     * @return 검색된 복지 서비스 목록 (요약)
+     */
+    @Transactional(readOnly = true)
+    public List<WelfareServiceSummaryResponse> searchByServiceName(String keyword, Integer limit) {
+        // limit 검증
+        if (limit == null || limit <= 0 || limit > MAX_LIMIT) {
+            limit = DEFAULT_LIMIT;
+        }
+
+        // 키워드로 검색
+        List<WelfareServiceJpaEntity> results = welfareServiceRepository.searchByKeyword(keyword, limit);
+
+        return results.stream()
+                .map(WelfareServiceSummaryResponse::from)
+                .toList();
+    }
+
+    /**
      * 복지 서비스 상세 정보를 조회하고 조회수를 증가시킵니다.
      *
      * @param serviceId 복지 서비스 ID

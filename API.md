@@ -279,6 +279,31 @@
 ]
 ```
 
+## 복지 서비스 이름으로 검색 - **GET** `/welfare-services/search`
+- 설명: 서비스 이름으로 복지 서비스 검색 (인증 불필요)
+- Query 파라미터:
+  - `keyword` (필수) - 검색 키워드
+  - `limit` (선택, 기본값: 50, 최대: 100) - 조회 개수
+- 동작:
+  - `service_name`, `service_summary`, `ai_summary`, `service_content` 필드에서 키워드 검색
+  - 조회수 많은 순으로 정렬
+- 요청 예시: `GET /welfare-services/search?keyword=청년&limit=20`
+- 응답 예시:
+```json
+[
+  {
+    "service_id": "WF12345",
+    "service_name": "청년 주거 지원 사업",
+    "ai_summary": "만 19-34세 청년에게 월세 보증금 지원",
+    "ctpv_nm": "서울특별시",
+    "sgg_nm": "강남구",
+    "support_type": "현금",
+    "service_type": "LOCAL",
+    "inquiry_count": 1523
+  }
+]
+```
+
 ## 복지 서비스 상세 조회 - **GET** `/welfare-services/{serviceId}`
 - 설명: 복지 서비스 상세 정보 조회 (조회수 자동 증가, 인증 불필요)
 - Path 파라미터: `serviceId` - 복지 서비스 ID
