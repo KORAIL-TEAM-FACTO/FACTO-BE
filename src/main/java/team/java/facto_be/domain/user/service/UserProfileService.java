@@ -8,7 +8,9 @@ import org.springframework.transaction.annotation.Transactional;
 import team.java.facto_be.domain.user.dto.request.UpdateProfileRequest;
 import team.java.facto_be.domain.user.dto.response.UserInfoResponse;
 import team.java.facto_be.domain.user.entity.UserJpaEntity;
+import team.java.facto_be.domain.user.entity.UserProfileHistoryJpaEntity;
 import team.java.facto_be.domain.user.facade.UserFacade;
+import team.java.facto_be.domain.user.repository.UserProfileHistoryRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -16,6 +18,7 @@ public class UserProfileService {
 
     private final UserFacade userFacade;
     private final ObjectMapper objectMapper;
+    private final UserProfileHistoryRepository userProfileHistoryRepository;
 
     @Transactional(readOnly = true)
     public UserInfoResponse getMyInfo() {
@@ -28,14 +31,36 @@ public class UserProfileService {
         UserJpaEntity user = userFacade.currentUser();
 
         try {
-            String householdStatusJson = objectMapper.writeValueAsString(request.householdStatus());
-            String interestThemeJson = objectMapper.writeValueAsString(request.interestTheme());
+            String newHouseholdStatusJson = objectMapper.writeValueAsString(request.householdStatus());
+            String newInterestThemeJson = objectMapper.writeValueAsString(request.interestTheme());
 
+            // 프로필 변경 이력 저장 (변경 전 값을 기록)
+            UserProfileHistoryJpaEntity history = UserProfileHistoryJpaEntity.builder()
+                    .userId(user.getId())
+                    .oldName(user.getName())
+                    .newName(request.name())
+                    .oldLifeCycle(user.getLifeCycle())
+                    .newLifeCycle(request.lifeCycle())
+                    .oldHouseholdStatus(user.getHouseholdStatus())
+                    .newHouseholdStatus(newHouseholdStatusJson)
+                    .oldInterestTheme(user.getInterestTheme())
+                    .newInterestTheme(newInterestThemeJson)
+                    .oldAge(user.getAge())
+                    .newAge(request.age())
+                    .oldSidoName(user.getSidoName())
+                    .newSidoName(request.sidoName())
+                    .oldSigunguName(user.getSigunguName())
+                    .newSigunguName(request.sigunguName())
+                    .build();
+
+            userProfileHistoryRepository.save(history);
+
+            // 프로필 업데이트
             user.updateProfile(
                     request.name(),
                     request.lifeCycle(),
-                    householdStatusJson,
-                    interestThemeJson,
+                    newHouseholdStatusJson,
+                    newInterestThemeJson,
                     request.age(),
                     request.sidoName(),
                     request.sigunguName()

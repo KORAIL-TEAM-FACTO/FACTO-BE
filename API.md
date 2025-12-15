@@ -279,6 +279,84 @@
 ]
 ```
 
+## 복지 서비스 이름으로 검색 - **GET** `/welfare-services/search`
+- 설명: 서비스 이름으로 복지 서비스 검색 (인증 불필요)
+- Query 파라미터:
+  - `keyword` (필수) - 검색 키워드
+  - `limit` (선택, 기본값: 50, 최대: 100) - 조회 개수
+- 동작:
+  - `service_name`, `service_summary`, `ai_summary`, `service_content` 필드에서 키워드 검색
+  - 조회수 많은 순으로 정렬
+- 요청 예시: `GET /welfare-services/search?keyword=청년&limit=20`
+- 응답 예시:
+```json
+[
+  {
+    "service_id": "WF12345",
+    "service_name": "청년 주거 지원 사업",
+    "ai_summary": "만 19-34세 청년에게 월세 보증금 지원",
+    "ctpv_nm": "서울특별시",
+    "sgg_nm": "강남구",
+    "support_type": "현금",
+    "service_type": "LOCAL",
+    "inquiry_count": 1523
+  }
+]
+```
+
+## 지역별 복지 서비스 개수 비교 (미리보기) - **GET** `/welfare-services/region-comparison`
+- 설명: 프로필 수정 전 지역 변경 미리보기 (인증 필요)
+- 헤더: `Authorization: Bearer {accessToken}`
+- Query 파라미터:
+  - `newSidoName` (필수) - 새로운 시도명
+  - `newSigunguName` (필수) - 새로운 시군구명
+- 동작:
+  - 현재 로그인한 사용자의 기존 지역과 새로운 지역의 복지 서비스 개수 비교
+  - 사용자의 생애주기를 기준으로 필터링된 개수 반환
+  - 차이(difference)는 새로운 지역 개수 - 현재 지역 개수
+- 요청 예시: `GET /welfare-services/region-comparison?newSidoName=경기도&newSigunguName=수원시`
+- 응답 예시:
+```json
+{
+  "current_sido_name": "서울특별시",
+  "current_sigungu_name": "강남구",
+  "current_count": 45,
+  "new_sido_name": "경기도",
+  "new_sigungu_name": "수원시",
+  "new_count": 62,
+  "difference": 17
+}
+```
+
+## 최근 프로필 수정에 따른 지역 복지 개수 차이 - **GET** `/welfare-services/latest-region-change`
+- 설명: 프로필 수정 후 이전 지역과 새 지역의 복지 서비스 개수 차이 조회 (인증 필요)
+- 헤더: `Authorization: Bearer {accessToken}`
+- 동작:
+  - 가장 최근 프로필 변경 이력에서 이전 지역과 새 지역의 복지 서비스 개수 비교
+  - 생애주기 변경도 함께 고려하여 각 시점의 생애주기로 필터링
+  - 프로필 수정 이력이 없으면 에러 반환
+- 사용 시나리오:
+  1. 사용자가 `PATCH /users/me`로 프로필 수정
+  2. 수정 완료 후 이 API 호출하여 변경 전후 복지 개수 차이 표시
+- 요청 예시: `GET /welfare-services/latest-region-change`
+- 응답 예시:
+```json
+{
+  "current_sido_name": "서울특별시",
+  "current_sigungu_name": "강남구",
+  "current_count": 45,
+  "new_sido_name": "경기도",
+  "new_sigungu_name": "수원시",
+  "new_count": 62,
+  "difference": 17
+}
+```
+- 참고:
+  - `current_*` 필드는 프로필 수정 **이전** 지역 정보
+  - `new_*` 필드는 프로필 수정 **이후** 지역 정보
+  - 지역만 변경되고 생애주기가 같으면 순수 지역 차이만 반영
+  - 지역과 생애주기가 모두 변경되면 양쪽 다 고려하여 계산
+
 ## 복지 서비스 상세 조회 - **GET** `/welfare-services/{serviceId}`
 - 설명: 복지 서비스 상세 정보 조회 (조회수 자동 증가, 인증 불필요)
 - Path 파라미터: `serviceId` - 복지 서비스 ID

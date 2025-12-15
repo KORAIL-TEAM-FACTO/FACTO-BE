@@ -4,7 +4,8 @@
       "Bash(./gradlew clean build:*)",
       "Bash(./gradlew build:*)",
       "Bash(./gradlew test:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(git checkout:*)"
     ]
   }
 }
