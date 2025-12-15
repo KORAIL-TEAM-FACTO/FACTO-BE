@@ -81,6 +81,14 @@ public class WelfareServiceService {
         // 복지 서비스 검색 (여러 조건으로 검색하여 결합)
         List<WelfareServiceJpaEntity> results = new ArrayList<>();
 
+        // 빈 리스트 처리: 최소 1개 항목 보장 (null로 대체)
+        if (householdStatusList.isEmpty()) {
+            householdStatusList.add(null);
+        }
+        if (interestThemeList.isEmpty()) {
+            interestThemeList.add(null);
+        }
+
         // 1. 생애주기 + 각 가구상태 + 각 관심테마로 검색
         for (String householdStatus : householdStatusList) {
             for (String interestTheme : interestThemeList) {

@@ -1,7 +1,5 @@
 package team.java.facto_be.domain.chatbot.service.tool;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.Tool;
@@ -24,7 +22,6 @@ public class PersonalizedWelfareRecommendationTool {
 
     private final WelfareServiceRepository welfareServiceRepository;
     private final UserFacade userFacade;
-    private final ObjectMapper objectMapper;
     private static final int DEFAULT_LIMIT = 15;
 
     @Tool(description = """
@@ -72,10 +69,51 @@ public class PersonalizedWelfareRecommendationTool {
             }
             profileSummary.append("\n\n");
 
-            // 사용자 프로필 기반 복지 서비스 검색 (다단계 fallback 포함)
-            List<WelfareServiceJpaEntity> results = searchWithUserProfile(user);
+            // 1단계: 생애주기 + 지역으로 검색
+            List<WelfareServiceJpaEntity> results = welfareServiceRepository.searchWelfareServices(
+                    user.getLifeCycle(),
+                    user.getHouseholdStatus(),
+                    user.getInterestTheme(),
+                    user.getSidoName(),
+                    user.getSigunguName(),
+                    null,  // 모든 서비스 타입
+                    DEFAULT_LIMIT
+            );
 
-            log.info("최종 검색 결과: {}개", results.size());
+            // 2단계: 결과가 부족하면 지역만으로 재검색
+            if (results.size() < 5) {
+                log.info("결과 부족 ({}/{}), 지역 기반 검색으로 fallback", results.size(), DEFAULT_LIMIT);
+                List<WelfareServiceJpaEntity> regionalResults = welfareServiceRepository.searchByRegionAndCategory(
+                        user.getSidoName(),
+                        user.getLifeCycle(),
+                        null,
+                        DEFAULT_LIMIT - results.size()
+                );
+
+                // 중복 제거하며 추가
+                for (WelfareServiceJpaEntity service : regionalResults) {
+                    if (results.stream().noneMatch(s -> s.getServiceId().equals(service.getServiceId()))) {
+                        results.add(service);
+                    }
+                }
+            }
+
+            // 3단계: 여전히 부족하면 생애주기 키워드 + 지역 조건 유지하며 검색
+            if (results.size() < 3) {
+                log.info("여전히 결과 부족 ({}/{}), 지역 조건 유지하며 키워드 검색", results.size(), DEFAULT_LIMIT);
+                List<WelfareServiceJpaEntity> keywordResults = welfareServiceRepository.searchByKeywordWithRegion(
+                        user.getSidoName(),
+                        user.getSigunguName(),
+                        user.getLifeCycle(),
+                        DEFAULT_LIMIT - results.size()
+                );
+
+                for (WelfareServiceJpaEntity service : keywordResults) {
+                    if (results.stream().noneMatch(s -> s.getServiceId().equals(service.getServiceId()))) {
+                        results.add(service);
+                    }
+                }
+            }
 
             if (results.isEmpty()) {
                 return profileSummary.toString() +
@@ -187,160 +225,5 @@ public class PersonalizedWelfareRecommendationTool {
         if (sgg == null) return ctpv;
         if (ctpv == null) return sgg;
         return ctpv + " " + sgg;
-    }
-
-    /**
-     * JSON 배열 문자열이 빈 배열인지 확인
-     * "[]", null, "" 모두 true 반환
-     */
-    private boolean isEmptyJsonArray(String jsonArray) {
-        if (jsonArray == null || jsonArray.isBlank()) {
-            return true;
-        }
-        String trimmed = jsonArray.trim();
-        return trimmed.equals("[]") || trimmed.equals("[ ]");
-    }
-
-    /**
-     * 사용자 프로필을 기반으로 복지 서비스 검색 (JSON 배열 개별 항목 처리)
-     */
-    private List<WelfareServiceJpaEntity> searchWithUserProfile(UserJpaEntity user) {
-        try {
-            // JSON 배열을 List로 파싱
-            List<String> householdStatusList = parseJsonArray(user.getHouseholdStatus());
-            List<String> interestThemeList = parseJsonArray(user.getInterestTheme());
-
-            log.info("사용자 프로필 - 생애주기: {}, 지역: {} {}, 가구상태: {}, 관심테마: {}",
-                    user.getLifeCycle(), user.getSidoName(), user.getSigunguName(),
-                    householdStatusList, interestThemeList);
-
-            // 모든 조합으로 검색 (OR 조건)
-            List<WelfareServiceJpaEntity> allResults = new ArrayList<>();
-
-            // 1차 검색: 생애주기 + 지역
-            List<WelfareServiceJpaEntity> baseResults = welfareServiceRepository.searchWelfareServices(
-                    user.getLifeCycle(),
-                    null,
-                    null,
-                    user.getSidoName(),
-                    user.getSigunguName(),
-                    null,
-                    DEFAULT_LIMIT * 3
-            );
-
-            log.info("1차 검색 (생애주기+지역) 결과: {}개", baseResults.size());
-            allResults.addAll(baseResults);
-
-            // 2차 검색: 결과가 부족하면 지역만으로 검색 (생애주기 조건 완화)
-            if (allResults.size() < DEFAULT_LIMIT) {
-                log.info("결과 부족, 지역만으로 추가 검색 시도");
-                List<WelfareServiceJpaEntity> regionOnlyResults = welfareServiceRepository.searchWelfareServices(
-                        null,  // 생애주기 조건 제거
-                        null,
-                        null,
-                        user.getSidoName(),
-                        user.getSigunguName(),
-                        null,
-                        DEFAULT_LIMIT * 2
-                );
-
-                log.info("2차 검색 (지역만) 결과: {}개", regionOnlyResults.size());
-
-                // 중복 제거하며 추가
-                for (WelfareServiceJpaEntity service : regionOnlyResults) {
-                    if (allResults.stream().noneMatch(s -> s.getServiceId().equals(service.getServiceId()))) {
-                        allResults.add(service);
-                    }
-                }
-            }
-
-            // 매칭 점수 높은 순으로 정렬 후 상위 DEFAULT_LIMIT개 반환
-            return allResults.stream()
-                    .sorted((a, b) -> {
-                        int scoreA = calculateMatchScore(a, householdStatusList, interestThemeList);
-                        int scoreB = calculateMatchScore(b, householdStatusList, interestThemeList);
-                        return Integer.compare(scoreB, scoreA);
-                    })
-                    .limit(DEFAULT_LIMIT)
-                    .toList();
-
-        } catch (Exception e) {
-            log.error("프로필 기반 검색 실패, 기본 검색으로 fallback", e);
-            // 실패 시 기본 검색
-            return welfareServiceRepository.searchWelfareServices(
-                    user.getLifeCycle(),
-                    null,
-                    null,
-                    user.getSidoName(),
-                    user.getSigunguName(),
-                    null,
-                    DEFAULT_LIMIT
-            );
-        }
-    }
-
-    /**
-     * JSON 배열 문자열을 List로 파싱
-     */
-    private List<String> parseJsonArray(String jsonArray) {
-        if (isEmptyJsonArray(jsonArray)) {
-            return new ArrayList<>();
-        }
-        try {
-            return objectMapper.readValue(jsonArray, new TypeReference<List<String>>() {});
-        } catch (Exception e) {
-            log.warn("JSON 파싱 실패: {}", jsonArray, e);
-            return new ArrayList<>();
-        }
-    }
-
-    /**
-     * 복지 서비스와 사용자 프로필의 매칭 점수 계산
-     */
-    private int calculateMatchScore(WelfareServiceJpaEntity service,
-                                    List<String> userHouseholdStatus,
-                                    List<String> userInterestTheme) {
-        int score = 0;
-
-        // 가구상태 매칭 확인
-        if (!userHouseholdStatus.isEmpty() && service.getTargetArray() != null) {
-            List<String> serviceTargets = parseJsonArray(service.getTargetArray());
-            for (String userStatus : userHouseholdStatus) {
-                if (containsWithSpaceVariations(serviceTargets, userStatus)) {
-                    score += 10;  // 가구상태 일치 시 +10점
-                }
-            }
-        }
-
-        // 관심테마 매칭 확인
-        if (!userInterestTheme.isEmpty() && service.getInterestThemeArray() != null) {
-            List<String> serviceThemes = parseJsonArray(service.getInterestThemeArray());
-            for (String userTheme : userInterestTheme) {
-                if (containsWithSpaceVariations(serviceThemes, userTheme)) {
-                    score += 5;  // 관심테마 일치 시 +5점
-                }
-            }
-        }
-
-        return score;
-    }
-
-    /**
-     * 공백 변형을 고려한 리스트 포함 여부 확인
-     */
-    private boolean containsWithSpaceVariations(List<String> list, String target) {
-        if (list == null || target == null) return false;
-
-        String normalized = target.replace(" ", "");
-        String withSpace = target.replace("·", " · ");
-
-        for (String item : list) {
-            if (item.equals(target) ||
-                item.replace(" ", "").equals(normalized) ||
-                item.equals(withSpace)) {
-                return true;
-            }
-        }
-        return false;
     }
 }
