@@ -82,12 +82,15 @@ public class ChatController {
 
     /**
      * Admin: initialize vector store.
+     * ✅ QuestionAnswerAdvisor가 활성화되어 RAG를 사용합니다.
+     * - similarityThreshold: 0.95로 매우 유사한 문서만 검색
+     * - Tool 결과 우선, RAG는 보조적 컨텍스트 제공
      */
     @PostMapping("/admin/init-vector-store")
     public ResponseEntity<String> initVectorStore() {
         log.info("POST /api/chat/admin/init-vector-store");
         chatService.initializeVectorStore();
-        return ResponseEntity.ok("VectorStore initialized");
+        return ResponseEntity.ok("VectorStore initialized successfully. RAG is enabled with high similarity threshold (0.95) for accuracy.");
     }
 
     private Long resolveCurrentUserId() {

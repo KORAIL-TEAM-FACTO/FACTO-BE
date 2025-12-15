@@ -117,8 +117,12 @@ public class PersonalizedWelfareRecommendationTool {
 
             if (results.isEmpty()) {
                 return profileSummary.toString() +
+                       "========================================\n" +
+                       "⚠️ 검색 결과: 0건 (결과 없음)\n" +
+                       "========================================\n" +
                        "죄송합니다. 현재 회원님의 조건에 맞는 복지 서비스를 찾지 못했습니다.\n" +
-                       "지역을 변경하시거나 관심 분야를 조정해보시는 것은 어떨까요?";
+                       "지역을 변경하시거나 관심 분야를 조정해보시는 것은 어떨까요?\n" +
+                       "========================================\n";
             }
 
             // 결과 포맷팅
@@ -135,6 +139,9 @@ public class PersonalizedWelfareRecommendationTool {
      */
     private String formatPersonalizedResults(List<WelfareServiceJpaEntity> results, UserJpaEntity user) {
         StringBuilder sb = new StringBuilder();
+        sb.append("========================================\n");
+        sb.append(String.format("✅ 검색 결과: %d건 (결과 있음)\n", results.size()));
+        sb.append("========================================\n");
         sb.append(String.format("총 %d개의 맞춤형 복지 서비스를 찾았습니다.\n\n", results.size()));
 
         // 상위 10개만 출력 (너무 많으면 응답 잘림)

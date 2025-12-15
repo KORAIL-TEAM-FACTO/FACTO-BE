@@ -25,6 +25,9 @@ public class WelfareSearchTool {
             일반적인 복지 서비스 검색 도구입니다. 지역과 카테고리로 넓게 검색합니다.
             사용자가 지역이나 대상/주제를 언급하면 이 도구를 우선 사용하세요.
             예: '대전 청소년 복지', '서울 노인 지원', '경기 주거 혜택'
+
+            ⚠️ 중요: 사용자가 지역을 언급했다면 반드시 region 파라미터를 입력하세요!
+            예: "대전에 있는 혜택" → region="대전" (필수!)
             """)
     public String searchWelfare(
             @ToolParam(description = "지역명 (선택). 예: 대전, 서울, 경기, 부산 등. 없으면 전국 검색") String region,
@@ -39,9 +42,10 @@ public class WelfareSearchTool {
                 region, category, null, DEFAULT_LIMIT
         );
 
-        // 결과가 없으면 키워드 검색으로 fallback
+        // 결과가 없으면 키워드 검색으로 fallback (지역 조건 유지!)
         if (results.isEmpty() && category != null) {
-            results = welfareServiceRepository.searchByKeyword(category, DEFAULT_LIMIT);
+            log.info("searchByRegionAndCategory 결과 없음 → 지역 조건 유지하며 키워드 검색");
+            results = searchByKeywordWithRegionFilter(region, category);
         }
 
         return formatResults(results, "일반 복지");
@@ -65,7 +69,8 @@ public class WelfareSearchTool {
                 lifeCycle, target, theme, null, null, "CENTRAL", DEFAULT_LIMIT
         );
 
-        results = withKeywordFallbackIfEmpty(results, buildKeyword(lifeCycle, target, theme));
+        // 중앙복지는 지역 제약이 없으므로 일반 키워드 fallback 사용
+        results = withKeywordFallbackIfEmpty(results, buildKeyword(lifeCycle, target, theme), null, null);
         return formatResults(results, "중앙복지");
     }
 
@@ -93,22 +98,27 @@ public class WelfareSearchTool {
                 lifeCycle, target, theme, sido, sigungu, "LOCAL", DEFAULT_LIMIT
         );
 
-        results = withKeywordFallbackIfEmpty(results, buildKeyword(lifeCycle, target, theme, sido, sigungu));
+        // 지역 복지는 지역 조건을 유지하며 fallback
+        results = withKeywordFallbackIfEmpty(results, buildKeyword(lifeCycle, target, theme), sido, sigungu);
         return formatResults(results, "지역복지");
     }
 
-    @Tool(description = "키워드로 모든 복지 서비스를 검색합니다.")
+    @Tool(description = """
+            키워드로 복지 서비스를 검색합니다.
+            ⚠️ 주의: 사용자가 지역을 언급했다면 searchWelfare를 사용하세요!
+            이 도구는 지역 필터링 없이 전국을 검색합니다.
+            """)
     public String searchByKeyword(
             @ToolParam(description = "검색 키워드 (예: 일자리, 주거, 교육, 의료)") String keyword
     ) {
-        log.info("키워드 복지 검색 - 키워드 {}", keyword);
+        log.info("키워드 복지 검색 (전국) - 키워드 {}", keyword);
 
         if (keyword == null || keyword.isBlank()) {
             return "검색 키워드를 입력해주세요.";
         }
 
         List<WelfareServiceJpaEntity> results = welfareServiceRepository.searchByKeyword(keyword, DEFAULT_LIMIT);
-        return formatResults(results, "키워드");
+        return formatResults(results, "키워드(전국)");
     }
 
     /**
@@ -116,11 +126,22 @@ public class WelfareSearchTool {
      */
     private String formatResults(List<WelfareServiceJpaEntity> results, String searchType) {
         if (results.isEmpty()) {
-            return String.format("[%s 검색 결과가 없습니다.", searchType);
+            // 결과 없음을 매우 명확하게 표시
+            return String.format("""
+                    ========================================
+                    ⚠️ 검색 결과: 0건 (결과 없음)
+                    ========================================
+                    [%s] 검색 결과가 없습니다.
+                    해당 조건에 맞는 복지 서비스를 찾지 못했습니다.
+                    ========================================
+                    """, searchType);
         }
 
         StringBuilder sb = new StringBuilder();
-        sb.append(String.format("[%s 검색결과 - %d건\n\n", searchType, results.size()));
+        sb.append("========================================\n");
+        sb.append(String.format("✅ 검색 결과: %d건 (결과 있음)\n", results.size()));
+        sb.append("========================================\n");
+        sb.append(String.format("[%s 검색결과]\n\n", searchType));
 
         for (WelfareServiceJpaEntity w : results) {
             sb.append("========================================\n");
@@ -169,15 +190,44 @@ public class WelfareSearchTool {
         return (v == null || v.isBlank()) ? null : v.trim();
     }
 
-    private List<WelfareServiceJpaEntity> withKeywordFallbackIfEmpty(List<WelfareServiceJpaEntity> primary, String keyword) {
+    /**
+     * 지역 조건을 유지하며 키워드 검색 fallback
+     */
+    private List<WelfareServiceJpaEntity> withKeywordFallbackIfEmpty(
+            List<WelfareServiceJpaEntity> primary,
+            String keyword,
+            String sido,
+            String sigungu
+    ) {
         if (primary != null && !primary.isEmpty()) {
             return primary;
         }
         if (keyword == null || keyword.isBlank()) {
             return primary;
         }
-        List<WelfareServiceJpaEntity> fallback = welfareServiceRepository.searchByKeyword(keyword, DEFAULT_LIMIT);
-        return fallback;
+
+        // 지역 조건이 있으면 지역 조건을 유지하며 검색
+        if (sido != null || sigungu != null) {
+            log.info("지역 조건 유지 키워드 fallback - 시도: {}, 시군구: {}, 키워드: {}", sido, sigungu, keyword);
+            return welfareServiceRepository.searchByKeywordWithRegion(sido, sigungu, keyword, DEFAULT_LIMIT);
+        }
+
+        // 지역 조건이 없으면 전국 검색
+        return welfareServiceRepository.searchByKeyword(keyword, DEFAULT_LIMIT);
+    }
+
+    /**
+     * 지역 필터를 유지하며 키워드 검색 (일반 복지용)
+     */
+    private List<WelfareServiceJpaEntity> searchByKeywordWithRegionFilter(String region, String keyword) {
+        if (region == null || region.isBlank()) {
+            // 지역이 없으면 전국 검색
+            return welfareServiceRepository.searchByKeyword(keyword, DEFAULT_LIMIT);
+        }
+
+        // 지역이 있으면 시도명으로 간주하고 검색
+        log.info("지역 조건 유지 키워드 검색 - 지역: {}, 키워드: {}", region, keyword);
+        return welfareServiceRepository.searchByKeywordWithRegion(region, null, keyword, DEFAULT_LIMIT);
     }
 
     private String buildKeyword(String... parts) {
