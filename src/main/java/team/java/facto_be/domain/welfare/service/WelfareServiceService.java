@@ -7,7 +7,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import team.java.facto_be.domain.user.entity.UserJpaEntity;
+import team.java.facto_be.domain.user.entity.UserProfileHistoryJpaEntity;
 import team.java.facto_be.domain.user.facade.UserFacade;
+import team.java.facto_be.domain.user.repository.UserProfileHistoryRepository;
+import team.java.facto_be.domain.welfare.dto.response.RegionComparisonResponse;
 import team.java.facto_be.domain.welfare.dto.response.WelfareServiceResponse;
 import team.java.facto_be.domain.welfare.dto.response.WelfareServiceSummaryResponse;
 import team.java.facto_be.domain.welfare.entity.WelfareServiceJpaEntity;
@@ -31,6 +34,7 @@ public class WelfareServiceService {
     private final WelfareServiceRepository welfareServiceRepository;
     private final UserFacade userFacade;
     private final ObjectMapper objectMapper;
+    private final UserProfileHistoryRepository userProfileHistoryRepository;
 
     /**
      * 서비스 이름으로 복지 서비스를 검색합니다.
@@ -52,6 +56,97 @@ public class WelfareServiceService {
         return results.stream()
                 .map(WelfareServiceSummaryResponse::from)
                 .toList();
+    }
+
+    /**
+     * 두 지역 간 복지 서비스 개수를 비교합니다.
+     *
+     * @param newSidoName 새로운 시도명
+     * @param newSigunguName 새로운 시군구명
+     * @return 지역별 복지 서비스 개수 비교 결과
+     */
+    @Transactional(readOnly = true)
+    public RegionComparisonResponse compareRegionWelfareCount(String newSidoName, String newSigunguName) {
+        // 현재 사용자 정보 가져오기
+        UserJpaEntity user = userFacade.currentUser();
+
+        // 현재 지역의 복지 서비스 개수 조회
+        List<WelfareServiceJpaEntity> currentRegionServices = welfareServiceRepository.searchWelfareServices(
+                user.getLifeCycle(),
+                null,
+                null,
+                user.getSidoName(),
+                user.getSigunguName(),
+                null,
+                Integer.MAX_VALUE  // 개수만 세기 위해 전체 조회
+        );
+
+        // 새로운 지역의 복지 서비스 개수 조회
+        List<WelfareServiceJpaEntity> newRegionServices = welfareServiceRepository.searchWelfareServices(
+                user.getLifeCycle(),
+                null,
+                null,
+                newSidoName,
+                newSigunguName,
+                null,
+                Integer.MAX_VALUE  // 개수만 세기 위해 전체 조회
+        );
+
+        return RegionComparisonResponse.of(
+                user.getSidoName(),
+                user.getSigunguName(),
+                currentRegionServices.size(),
+                newSidoName,
+                newSigunguName,
+                newRegionServices.size()
+        );
+    }
+
+    /**
+     * 가장 최근 프로필 수정 시 변경된 지역의 복지 서비스 개수 차이를 조회합니다.
+     *
+     * @return 최근 지역 변경에 따른 복지 서비스 개수 비교 결과
+     */
+    @Transactional(readOnly = true)
+    public RegionComparisonResponse getLatestRegionChangeComparison() {
+        // 현재 사용자 정보 가져오기
+        UserJpaEntity user = userFacade.currentUser();
+
+        // 가장 최근 프로필 변경 이력 조회
+        UserProfileHistoryJpaEntity history = userProfileHistoryRepository
+                .findFirstByUserIdOrderByCreatedAtDesc(user.getId())
+                .orElseThrow(() -> new IllegalArgumentException("프로필 변경 이력이 없습니다."));
+
+        // 이전 지역의 복지 서비스 개수 조회 (이력의 old 생애주기 사용)
+        List<WelfareServiceJpaEntity> oldRegionServices = welfareServiceRepository.searchWelfareServices(
+                history.getOldLifeCycle(),
+                null,
+                null,
+                history.getOldSidoName(),
+                history.getOldSigunguName(),
+                null,
+                Integer.MAX_VALUE
+        );
+
+        // 새로운 지역의 복지 서비스 개수 조회 (이력의 new 생애주기 사용)
+        List<WelfareServiceJpaEntity> newRegionServices = welfareServiceRepository.searchWelfareServices(
+                history.getNewLifeCycle(),
+                null,
+                null,
+                history.getNewSidoName(),
+                history.getNewSigunguName(),
+                null,
+                Integer.MAX_VALUE
+        );
+
+        return RegionComparisonResponse.of(
+                history.getOldSidoName(),
+                history.getOldSigunguName(),
+                oldRegionServices.size(),
+                history.getNewSidoName(),
+                history.getNewSigunguName(),
+                newRegionServices.size()
+        );
     }
 
     /**
